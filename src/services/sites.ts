@@ -174,3 +174,87 @@ export async function fetchSiteDetails(request: Request, response: Response) {
     return response.status(500).json({ message: "Failed to fetch site details" });
   }
 }
+
+/**
+ * Create a site for a given businessId.
+ * Options default the site's name/address/members to provided values (used when creating the first site for a new business).
+ */
+export async function createSite(
+  businessId: string,
+  options: { 
+    name?: string; 
+    address?: string; 
+    members?: Array<any>; 
+    metadata?: any, 
+    session?: any 
+  } = {}
+) {
+  const { name, address, members, metadata, session} = options
+  if (!businessId || !mongoose.Types.ObjectId.isValid(businessId)) {
+    throw new Error("Invalid businessId");
+  }
+
+  const siteDoc = await Site.create(
+    [{
+    business: new mongoose.Types.ObjectId(businessId),
+    name: options.name ?? undefined,
+    address: options.address ?? undefined,
+    members: options.members ?? [],
+    metadata: options.metadata ?? {},
+  }], {session});
+
+  return siteDoc[0];
+}
+
+export async function AddSite(request: Request, response: Response) {
+  // const session = await mongoose.startSession();
+  // session.startTransaction();
+  try {
+    const { businessId, name, address, members, metadata } = request.body;
+
+    if (!businessId || !mongoose.Types.ObjectId.isValid(String(businessId))) {
+      // await session.abortTransaction();
+      // session.endSession();
+      return response.status(400).json({ message: "Valid businessId is required" });
+    }
+
+    // we can just add the user in the request from token as member 
+    // we can also have an option in the frontend for users to add members
+    if (members !== undefined) {
+      if (!Array.isArray(members)) {
+        // await session.abortTransaction();
+        // session.endSession();
+        return response.status(400).json({ message: "members must be an array" });
+      }
+
+      const memberIds = Array.from(new Set(members.map((m: any) => String(m.userId ?? "").trim())));
+      const invalidIds = memberIds.filter((id: string) => !mongoose.Types.ObjectId.isValid(id));
+      if (invalidIds.length) {
+        // await session.abortTransaction();
+        // session.endSession();
+        return response.status(400).json({ message: "Invalid user id(s) provided", invalidIds });
+      }
+
+      const users = await User.find({ _id: { $in: memberIds } }).select("_id");
+      const foundIds = new Set(users.map(u => String(u._id)));
+      const missing = memberIds.filter((id: string) => !foundIds.has(id));
+      if (missing.length) {
+        // await session.abortTransaction();
+        // session.endSession();
+        return response.status(400).json({ message: "Some users were not found.", missing });
+      }
+    }
+
+    const site = await createSite(String(businessId), { name, address, members, metadata });
+
+    // await session.commitTransaction();
+    // session.endSession();
+
+    return response.status(201).json({ message: "Site created", site });
+  } catch (error: any) {
+    // await session.abortTransaction();
+    // session.endSession();
+    console.error("AddSite error:", error);
+    return response.status(500).json({ message: "Failed to create site" });
+  }
+}

@@ -1,48 +1,100 @@
-import type { Request, Response } from "express"
-import User from "../models/User.js"
-import mongoose from "mongoose"
-import Business from "../models/Business.js"
+import type { Request, Response } from "express";
+import User from "../models/User.js";
+import mongoose from "mongoose";
+import Business from "../models/Business.js";
+import { createSite } from "./sites.js";
 
 export const createBusiness = async (request: Request, response: Response) => {
-    try {
-        const {name, address, members} = request.body
-        if (!members || !name || !address) {
-            return response.status(400).json({ message: "Missing required fields." })
-        }
-        if (!Array.isArray(members) || members.length === 0) {
-            return response.status(400).json({ message: "members must be a non-empty array of user ids and role"})
-        }
-        //check if there is userId and/or role
-        console.log(members, 'members')
-        const membersIds = Array.from(new Set(members.map((member) => String(member.userId).trim())))
-        console.log(membersIds, 'members ids')
-        const invalidIds = membersIds.filter((id) => !mongoose.Types.ObjectId.isValid(id))
-        console.log(invalidIds, 'invalid Ids')
-
-        if (invalidIds.length) {
-            return response.status(400).json({ message: "Invalid user id(s) provided", invalidIds})
-        }
-        const users = await User.find({ _id: { $in: membersIds}}).select("_id")
-        const foundIds = new Set(users.map(user => String(user._id)))
-        const missing = membersIds.filter(id => !foundIds.has(id))
-        if (missing.length) {
-            return response.status(400).json({ message: "Some users were not found.", missing })
-        }
-
-        const businessDoc = await Business.create({
-            name,
-            address,
-            members
-        })
-
-        await User.updateMany(
-            { _id: { $in: membersIds } },
-            { $addToSet: { businesses: businessDoc._id } }
-        )
-
-        return response.status(201).json({ message: "Business created", business: businessDoc })
-    } catch (error) {
-        console.error("createBusiness error:", error)
-        return response.status(500).json({ message: "Failed to create a business" })
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { name, address, members } = request.body;
+    if (!members || !name || !address) {
+      return response.status(400).json({ message: "Missing required fields." });
     }
-}
+    if (!Array.isArray(members) || members.length === 0) {
+      return response
+        .status(400)
+        .json({
+          message: "members must be a non-empty array of user ids and role",
+        });
+    }
+    //check if there is userId and/or role
+    console.log(members, "members");
+    const membersIds = Array.from(
+      new Set(members.map((member) => String(member.userId).trim()))
+    );
+    console.log(membersIds, "members ids");
+    const invalidIds = membersIds.filter(
+      (id) => !mongoose.Types.ObjectId.isValid(id)
+    );
+    console.log(invalidIds, "invalid Ids");
+
+    if (invalidIds.length) {
+      return response
+        .status(400)
+        .json({ message: "Invalid user id(s) provided", invalidIds });
+    }
+    const users = await User.find({ _id: { $in: membersIds } }).select("_id");
+    const foundIds = new Set(users.map((user) => String(user._id)));
+    const missing = membersIds.filter((id) => !foundIds.has(id));
+    if (missing.length) {
+      return response
+        .status(400)
+        .json({ message: "Some users were not found.", missing });
+    }
+    const businessDoc = await Business.create(
+      [
+        {
+          name,
+          address,
+          members,
+        },
+      ],
+      { session }
+    );
+
+    // Ensure the created document exists before accessing index 0
+    if (!businessDoc || businessDoc.length === 0 || !businessDoc[0]) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error("createBusiness error: created business document missing");
+      return response
+        .status(500)
+        .json({ message: "Failed to create a business" });
+    }
+
+    const createdBusiness = businessDoc[0];
+
+    await User.updateMany(
+      { _id: { $in: membersIds } },
+      { $addToSet: { businesses: createdBusiness._id } },
+      { session }
+    );
+
+    // create default first site for this business using the business details
+    const siteDoc = await createSite(String(createdBusiness._id), {
+      name: createdBusiness.name,
+      address: createdBusiness.address,
+      members: createdBusiness.members,
+      session,
+    });
+
+    await session.commitTransaction();
+    session.endSession();
+    return response
+      .status(201)
+      .json({
+        message: "Business created",
+        business: businessDoc,
+        site: siteDoc,
+      });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("createBusiness error:", error);
+    return response
+      .status(500)
+      .json({ message: "Failed to create a business" });
+  }
+};
