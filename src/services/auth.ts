@@ -152,9 +152,16 @@ export async function register(request: Request, response: Response) {
 
     response.status(201).send({
       message: "User created successfully",
-      // user: { id: user._id, username: user.username, email: user.email, profilePicture: user.profilePicture },
-      // token,
-      // refreshToken,
+      user: {
+        id: user._id,
+        fullname: user.fullname,
+        email: user.email,
+        role: user.role,
+        profilePicture: user.profilePicture,
+        expoPushTokens: user.expoPushTokens,
+      },
+      token,
+      refreshToken,
     });
     // addLog({
     //   entityId: user._id,
