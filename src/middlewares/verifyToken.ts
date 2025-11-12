@@ -11,6 +11,12 @@ declare global {
   }
 }
 
+//verify token properly save user to request.user so you don't have to do 
+// more in the actual service function
+
+//when token fails refresh so return a status that
+//is appropraite so you can identify it
+
 const jwt_secret_key = process.env.SECRET_KEY!;
 // console.log("JWT Secret Key:", jwt_secret_key);
 const jwt_refresh_secret_key = process.env.REFRESH_SECRET_KEY!;

@@ -12,7 +12,7 @@ export interface IBusiness extends Document {
   members: IBusinessMember[]; // includes owner/manager entries
   utilities?: mongoose.Types.ObjectId[]; // refs to Utility
   metadata?: Record<string, any>;
-  invites?: mongoose.Types.ObjectId;
+  invites?: mongoose.Types.ObjectId[];
 }
 
 const BusinessSchema: Schema = new Schema<IBusiness>(
@@ -27,7 +27,7 @@ const BusinessSchema: Schema = new Schema<IBusiness>(
       },
     ],
     utilities: [{ type: Schema.Types.ObjectId, ref: "Utility" }],
-    invites: [{types: Schema.Types.ObjectId, ref: "Invite"}],
+    invites: [{type: Schema.Types.ObjectId, ref: "Invite"}],
     // metadata: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
