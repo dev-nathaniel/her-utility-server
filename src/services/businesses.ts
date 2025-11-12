@@ -12,8 +12,12 @@ export const createBusiness = async (request: Request, response: Response) => {
         if (!Array.isArray(members) || members.length === 0) {
             return response.status(400).json({ message: "members must be a non-empty array of user ids and role"})
         }
+        //check if there is userId and/or role
+        console.log(members, 'members')
         const membersIds = Array.from(new Set(members.map((member) => String(member.userId).trim())))
+        console.log(membersIds, 'members ids')
         const invalidIds = membersIds.filter((id) => !mongoose.Types.ObjectId.isValid(id))
+        console.log(invalidIds, 'invalid Ids')
 
         if (invalidIds.length) {
             return response.status(400).json({ message: "Invalid user id(s) provided", invalidIds})
