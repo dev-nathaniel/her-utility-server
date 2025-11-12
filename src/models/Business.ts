@@ -19,7 +19,7 @@ const BusinessSchema: Schema = new Schema<IBusiness>(
   {
     name: { type: String, required: true },
     address: { type: String, required: true },
-    postcode: { type: String, required: true },
+    // postcode: { type: String, required: true },
     members: [
       {
         userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -28,7 +28,7 @@ const BusinessSchema: Schema = new Schema<IBusiness>(
     ],
     utilities: [{ type: Schema.Types.ObjectId, ref: "Utility" }],
     invites: [{types: Schema.Types.ObjectId, ref: "Invite"}],
-    metadata: { type: Schema.Types.Mixed },
+    // metadata: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 );
