@@ -29,17 +29,20 @@ export async function login(request: Request, response: Response) {
   try {
     const { email, password } = request.body;
     if (!password || !email) {
+      console.log("Email and password required")
       response.status(400).send({ message: "Email and password are required" });
       return;
     }
     const user = (await User.findOne({email})) as IUser & { _id: any };
     if (!user) {
+      console.log("Invalid credentials")
       response.status(401).send({ message: "Invalid credentials" });
       return;
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      console.log("Invalid credentials")
       response.status(401).send({ message: "Invalid credentials" });
       return;
     }
@@ -78,6 +81,7 @@ export async function login(request: Request, response: Response) {
       refreshToken,
     });
   } catch (error) {
+      console.log("Login failed")
     response.status(500).send({ message: "Login failed" });
   }
 }
