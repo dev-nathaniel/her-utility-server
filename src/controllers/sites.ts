@@ -1,5 +1,5 @@
 import express from "express";
-import { fetchSitesForUser, inviteToSite } from "../services/sites.js";
+import { fetchSiteDetails, fetchSitesForUser, inviteToSite } from "../services/sites.js";
 import { verifyToken } from "../middlewares/verifyToken.js";
 const router = express.Router();
 
@@ -21,7 +21,7 @@ const router = express.Router();
 
 router.get("/", verifyToken, fetchSitesForUser)
 // router.post("/")
-// router.get("/:id")
+router.get("/:id", verifyToken, fetchSiteDetails)
 // router.put("/:id")
 // router.delete("/:id")
 

@@ -116,3 +116,61 @@ export async function fetchSitesForUser(request: Request, response: Response) {
     return response.status(500).json({ message: "Failed to fetch sites" });
   }
 }
+
+
+/**
+ * Return full site details by siteId.
+ * Populates business, members.userId (basic user info) and utilities.
+ * Throws on invalid id.
+ */
+export async function getSiteDetails(siteId: string) {
+  if (!siteId || !mongoose.Types.ObjectId.isValid(siteId)) {
+    throw new Error("Invalid siteId");
+  }
+
+  const site = await Site.findById(siteId)
+    .populate("business")
+    .populate({
+      path: "members.userId",
+      model: "User",
+      select: "_id fullname email profilePicture role",
+    })
+    .populate("utilities")
+    .lean()
+    .exec();
+
+  if (!site) {
+    return null;
+  }
+
+  return site;
+}
+
+/**
+ * Express handler to fetch site details.
+ * Accepts siteId in params (/sites/:siteId), query (?siteId=) or body.
+ */
+export async function fetchSiteDetails(request: Request, response: Response) {
+  try {
+    const siteId =
+      String(request.params.id).trim();
+
+    if (!siteId) {
+      return response.status(400).json({ message: "siteId is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(siteId)) {
+      return response.status(400).json({ message: "Invalid siteId" });
+    }
+
+    const site = await getSiteDetails(siteId);
+    if (!site) {
+      return response.status(404).json({ message: "Site not found" });
+    }
+
+    return response.status(200).json({ site });
+  } catch (err: any) {
+    console.error("fetchSiteDetails error:", err);
+    return response.status(500).json({ message: "Failed to fetch site details" });
+  }
+}
