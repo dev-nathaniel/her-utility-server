@@ -1,5 +1,6 @@
 import express from "express";
-import { inviteToSite } from "../services/sites.js";
+import { fetchSitesForUser, inviteToSite } from "../services/sites.js";
+import { verifyToken } from "../middlewares/verifyToken.js";
 const router = express.Router();
 
 // Invite a user to a site by email and role
@@ -18,7 +19,7 @@ const router = express.Router();
 //   }
 // });
 
-// router.get("/")
+router.get("/", verifyToken, fetchSitesForUser)
 // router.post("/")
 // router.get("/:id")
 // router.put("/:id")

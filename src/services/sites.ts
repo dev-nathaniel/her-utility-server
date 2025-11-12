@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Site from "../models/Site.js";
 import User from "../models/User.js";
 import {sendEmail} from "../utils/sendEmail.js";
+import type { Request, Response } from "express";
 
 /*
 Behavior:
@@ -67,5 +68,51 @@ export async function inviteToSite(siteId: string, email: string, role: "owner" 
     }
 
     return { invited: true, existingUser: false, token };
+  }
+}
+
+/**
+ * Return sites where the given userId is a member.
+ * Throws if userId is invalid.
+ */
+export async function getSitesForUserId(userId: string) {
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid userId");
+  }
+
+  // find sites where members array contains this userId
+  const sites = await Site.find({ "members.userId": new mongoose.Types.ObjectId(userId) })
+    .populate("business")
+    .populate({
+      path: "members.userId",
+      model: "User",
+      select: "_id fullname email"
+    })
+    .lean()
+    .exec();
+
+  return sites;
+}
+
+/**
+ * Express handler: accepts userId in params, query or body.
+ * e.g. GET /sites/user/:userId or GET /sites?userId=...
+ */
+export async function fetchSitesForUser(request: Request, response: Response) {
+  try {
+    const userId = String(request.user.userId).trim();
+    if (!userId) {
+      return response.status(400).json({ message: "userId is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: "Invalid userId" });
+    }
+
+    const sites = await getSitesForUserId(userId);
+    return response.status(200).json({ sites });
+  } catch (err: any) {
+    console.error("fetchSitesForUser error:", err);
+    return response.status(500).json({ message: "Failed to fetch sites" });
   }
 }
