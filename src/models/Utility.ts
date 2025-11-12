@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export type UtilityType = "electricity" | "gas" | "water";
 
 export interface IUtility extends Document {
-  siteId: mongoose.Types.ObjectId;
+  site: mongoose.Types.ObjectId;
   type: UtilityType;
   supplier?: string;
   identifier?: string; // MPRN / MPAN / other id
@@ -12,11 +12,12 @@ export interface IUtility extends Document {
   billingFrequency?: string;
   paymentMethod?: string;
   notes?: string;
+  status?: string;
 }
 
 const UtilitySchema: Schema = new Schema<IUtility>(
   {
-    siteId: { type: Schema.Types.ObjectId, ref: "Site", required: true },
+    site: { type: Schema.Types.ObjectId, ref: "Site", required: true },
     type: { type: String, enum: ["electricity", "gas", "water"], required: true },
     supplier: { type: String },
     identifier: { type: String }, // store MPRN, MPAN, etc.
@@ -25,6 +26,7 @@ const UtilitySchema: Schema = new Schema<IUtility>(
     billingFrequency: { type: String },
     paymentMethod: { type: String },
     notes: { type: String },
+    status: { type: String, enum: ["active", "expired", "pending"]}
   },
   { timestamps: true }
 );

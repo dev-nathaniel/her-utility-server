@@ -1,36 +1,36 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface ISiteMember {
+export interface IBusinessMember {
   userId: mongoose.Types.ObjectId;
   role: "owner" | "manager" | "viewer";
 }
 
-export interface ISite extends Document {
+export interface IBusiness extends Document {
   name: string;
-  business: mongoose.Types.ObjectId;
   address: string;
   postcode: string;
-  members: ISiteMember[]; // includes owner/manager entries
+  members: IBusinessMember[]; // includes owner/manager entries
   utilities?: mongoose.Types.ObjectId[]; // refs to Utility
   metadata?: Record<string, any>;
+  invites?: mongoose.Types.ObjectId;
 }
 
-const SiteSchema: Schema = new Schema<ISite>(
+const BusinessSchema: Schema = new Schema<IBusiness>(
   {
     name: { type: String, required: true },
-    business: { type: mongoose.Schema.Types.ObjectId, ref: "Business", required: true},
     address: { type: String, required: true },
     postcode: { type: String, required: true },
     members: [
       {
         userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-        role: { type: String, enum: ["owner", "manager", "viewer"], default: "manager" },
+        role: { type: String, enum: ["owner", "manager", "viewer"], default: "owner" },
       },
     ],
     utilities: [{ type: Schema.Types.ObjectId, ref: "Utility" }],
+    invites: [{types: Schema.Types.ObjectId, ref: "Invite"}],
     metadata: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 );
 
-export default mongoose.model<ISite>("Site", SiteSchema);
+export default mongoose.model<IBusiness>("Business", BusinessSchema);

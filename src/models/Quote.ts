@@ -3,9 +3,10 @@ import mongoose, { Schema, Document } from "mongoose";
 export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected" | "expired";
 
 export interface IQuote extends Document {
+    business: mongoose.Types.ObjectId;
+    site: mongoose.Types.ObjectId;
   requester: mongoose.Types.ObjectId; // user who requested the quote
   recipients: mongoose.Types.ObjectId[]; // users who receive quote (admins / suppliers / users)
-  site?: mongoose.Types.ObjectId;
   utilityType: string;
   questionnaire: Record<string, any>;
   suggestedPrice?: number;
@@ -13,20 +14,27 @@ export interface IQuote extends Document {
   status: QuoteStatus;
   notes?: string;
   createdBy: mongoose.Types.ObjectId;
+  respondedAt: Date;
+  respondedNotes: string;
+  type: string;
 }
 
 const QuoteSchema: Schema = new Schema<IQuote>(
   {
+    business: { type: Schema.Types.ObjectId, ref: "Business", required: true},
+    site: { type: Schema.Types.ObjectId, ref: "Site", required: true},
     requester: { type: Schema.Types.ObjectId, ref: "User", required: true },
     recipients: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    site: { type: Schema.Types.ObjectId, ref: "Site" },
-    utilityType: { type: String, required: true },
+    utilityType: { type: String, enum: ["electricity", "water", "gas"], required: true },
     questionnaire: { type: Schema.Types.Mixed, required: true }, // store answers: current supplier, contract expiry, postcode, identifiers...
     suggestedPrice: { type: Number },
     currency: { type: String, default: "GBP" },
     status: { type: String, enum: ["draft", "sent", "accepted", "rejected", "expired"], default: "draft" },
     notes: { type: String },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    respondedAt: { type: Date},
+    respondedNotes: { type: String },
+    type: {type: String, enum: ["new", "renewal"], required: true}
   },
   { timestamps: true }
 );

@@ -19,10 +19,10 @@ export async function inviteToSite(siteId: string, email: string, role: "owner" 
 
   if (user) {
     // Add to owners if not present
-    const exists = (site.owners || []).some(o => String(o.userId) === String(user._id));
-    site.owners = site.owners || [];
+    const exists = (site.members || []).some(o => String(o.userId) === String(user._id));
+    site.members = site.members || [];
     if (!exists) {
-      site.owners.push({ userId: user._id as mongoose.Types.ObjectId, role });
+      site.members.push({ userId: user._id as mongoose.Types.ObjectId, role });
       await site.save();
     }
 

@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string;
   profilePicture?: mongoose.Schema.Types.ObjectId | null;
   role: "user" | "admin" | "guest" | "host";
+  businesses?: mongoose.Schema.Types.ObjectId[]
   expoPushTokens?: string[];
   refreshTokens: mongoose.Schema.Types.ObjectId[]
 }
@@ -18,6 +19,7 @@ const userSchema: Schema = new Schema({
   role: { type: String, enum: ["user", "admin", "guest", "host"], default: "user" },
   // profilePicture: { type: mongoose.Schema.Types.ObjectId, default: null },
   expoPushTokens: [{ type: String }],
+  businesses: [{type: mongoose.Schema.Types.ObjectId, ref: 'Business'}],
   refreshTokens: [{type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken'}]
 }, { timestamps: true });
 

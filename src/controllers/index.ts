@@ -16,10 +16,12 @@ router.get("/", (request: Request, response: Response) => {
 
 router.use("/auth", authRouter);
 router.use("/users", userRouter);
+router.use("/businesses", userRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/logs", logRouter);
 router.use("/quotes", quotesRouter);
 router.use("/sites", sitesRouter);
+router.use("/utilities", sitesRouter);
 router.use("/push-notification", pushNotificationRouter);
 
 export default router;
