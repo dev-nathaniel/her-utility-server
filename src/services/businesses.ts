@@ -151,3 +151,17 @@ export async function fetchBusinessesForUser(
     return response.status(500).json({ message: "Failed to fetch businesses" });
   }
 }
+
+export async function fetchBusiness(request: Request, response: Response) {
+  console.log("Get business by ID endpoint hit");
+  try {
+    const business = await Business.findById(request.params.id)
+    if (!business) {
+      return response.status(404).json({ message: "Business not found" })
+    }
+    return response.status(200).json({ message: 'successful', business})
+  } catch (error) {
+    console.log("error fetching business", error)
+    return response.status(500).json({ message: "Failed to fetch business by ID"})
+  }
+}
