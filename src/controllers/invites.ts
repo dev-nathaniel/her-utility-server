@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { verifyToken, verifyTokenAndAuthorization } from "../middlewares/verifyToken.js";
-import { createBusiness } from "../services/businesses.js";
+import { getInvites } from "../services/invites.js";
 
 
 const router = Router();
 
-router.post("/", verifyToken, createBusiness);
+router.post("/", getInvites);
 // router.get("/", );
 // router.get("/:id", ); 
 // router.get("/:id/members", ); 
