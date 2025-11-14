@@ -9,6 +9,8 @@ import logRouter from "./logs.js";
 import pushNotificationRouter from "./pushNotification.js";
 import quotesRouter from "./quotes.js";
 import sitesRouter from "./sites.js";
+import utilitiesRouter from "./utilities.js";
+
 
 const router = Router();
 
@@ -23,7 +25,7 @@ router.use("/dashboard", dashboardRouter);
 router.use("/logs", logRouter);
 router.use("/quotes", quotesRouter);
 router.use("/sites", sitesRouter);
-router.use("/utilities", sitesRouter);
+router.use("/utilities", utilitiesRouter);
 router.use("/invites", inviteRouter)
 router.use("/push-notification", pushNotificationRouter);
 
