@@ -172,3 +172,59 @@ export async function fetchBusiness(request: Request, response: Response) {
     return response.status(500).json({ message: "Failed to fetch business by ID"})
   }
 }
+
+export async function fetchBusinessMember(request:Request, response: Response) {
+  console.log("Get business member endpoint hit")
+  try {
+    const { id: businessId, userId } = request.params;
+
+    if (!businessId || !userId) {
+      return response.status(400).json({ message: "Business id and user id are required"})
+    }
+
+    // Validate ObjectIds
+    if (!mongoose.Types.ObjectId.isValid(businessId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ message: "Invalid businessId or userId" });
+    }
+
+    // 1. Find the business and check membership
+    const business = await Business.findById(businessId);
+    if (!business) {
+      return response.status(404).json({ message: "Business not found" });
+    }
+
+    // Check if user is in the business members array
+    const memberRecord = business.members.find(
+      (m) => m.userId.toString() === userId
+    );
+
+    if (!memberRecord) {
+      return response.status(403).json({
+        message: "User is not a member of this business"
+      });
+    }
+
+    // 2. Fetch user with only needed fields
+    const user = await User.findById(userId)
+      .select("fullname email sites") // only return what you need
+      .lean();
+
+    if (!user) {
+      return response.status(404).json({ message: "User not found" });
+    }
+
+    // 3. Attach the role (from business.members)
+    const result = {
+      fullname: user.fullname,
+      email: user.email,
+      sites: user.sites ?? [],
+      role: memberRecord.role, // owner | manager | viewer
+    };
+
+    return response.status(200).json(result);
+
+  } catch (error) {
+    console.error("Error fetching business member:", error);
+    return response.status(500).json({ message: "Internal server error" });
+  }
+}
