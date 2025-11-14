@@ -156,6 +156,13 @@ export async function fetchBusiness(request: Request, response: Response) {
   console.log("Get business by ID endpoint hit");
   try {
     const business = await Business.findById(request.params.id)
+    .populate("sites")
+    .populate({
+      path: "members.userId",
+      model: "User",
+      select: "_id fullname email",
+  })
+    .populate("invites")
     if (!business) {
       return response.status(404).json({ message: "Business not found" })
     }
