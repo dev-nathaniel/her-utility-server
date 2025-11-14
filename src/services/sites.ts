@@ -133,7 +133,7 @@ export async function getSiteDetails(siteId: string) {
     .populate({
       path: "members.userId",
       model: "User",
-      select: "_id fullname email profilePicture role",
+      select: "_id fullname email",
     })
     .populate("utilities")
     .lean()
