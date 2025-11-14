@@ -98,3 +98,40 @@ export const createBusiness = async (request: Request, response: Response) => {
       .json({ message: "Failed to create a business" });
   }
 };
+
+export async function getBusinessesForUserId(userId: string) {
+  if(!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid userId")
+  }
+
+  const businesses = await Business.find({ "members.userId": new mongoose.Types.ObjectId(userId) })
+    .populate("invites")
+    .populate({
+      path: "members.userId",
+      model: "User",
+      select: "_id fullname email"
+    })
+    .lean()
+    .exec()
+
+  return businesses
+}
+
+export async function fetchBusinessesForUser(request: Request, response: Response) {
+  try {
+    const userId = String(request.user.userId).trim()
+    if (!userId) {
+      return response.status(400).json({ message: "token is required"})
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return response.status(400).json({ messafe: "Invalid userId" })
+    }
+
+    const businesses = await getBusinessesForUserId(userId)
+    return response.status(200).json({ businesses })
+  } catch (error: any) {
+    console.log("fetchBusinessesForUser error:", error)
+    return response.status(500).json({ message: "Failed to fetch businesses"})
+  }
+}

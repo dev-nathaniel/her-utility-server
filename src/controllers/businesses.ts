@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { verifyToken, verifyTokenAndAuthorization } from "../middlewares/verifyToken.js";
-import { createBusiness } from "../services/businesses.js";
+import { createBusiness, fetchBusinessesForUser } from "../services/businesses.js";
 
 
 const router = Router();
 
 router.post("/", verifyToken, createBusiness);
-// router.get("/", );
+router.get("/", verifyToken, fetchBusinessesForUser);
 // router.get("/:id", ); 
 // router.get("/:id/members", ); 
 // router.get("/:id/members/:userId/role", ); 
