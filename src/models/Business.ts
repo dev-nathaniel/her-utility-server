@@ -13,6 +13,7 @@ export interface IBusiness extends Document {
   utilities?: mongoose.Types.ObjectId[]; // refs to Utility
   metadata?: Record<string, any>;
   invites?: mongoose.Types.ObjectId[];
+  sites?: mongoose.Types.ObjectId[];
 }
 
 const BusinessSchema: Schema = new Schema<IBusiness>(
@@ -28,6 +29,7 @@ const BusinessSchema: Schema = new Schema<IBusiness>(
     ],
     utilities: [{ type: Schema.Types.ObjectId, ref: "Utility" }],
     invites: [{type: Schema.Types.ObjectId, ref: "Invite"}],
+    sites: [{type: Schema.Types.ObjectId, ref: "Site"}]
     // metadata: { type: Schema.Types.Mixed },
   },
   { timestamps: true }

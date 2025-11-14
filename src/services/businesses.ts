@@ -13,11 +13,9 @@ export const createBusiness = async (request: Request, response: Response) => {
       return response.status(400).json({ message: "Missing required fields." });
     }
     if (!Array.isArray(members) || members.length === 0) {
-      return response
-        .status(400)
-        .json({
-          message: "members must be a non-empty array of user ids and role",
-        });
+      return response.status(400).json({
+        message: "members must be a non-empty array of user ids and role",
+      });
     }
     //check if there is userId and/or role
     console.log(members, "members");
@@ -80,15 +78,28 @@ export const createBusiness = async (request: Request, response: Response) => {
       session,
     });
 
+    if (!siteDoc) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error("createSite error: created site document missing");
+      return response
+        .status(500)
+        .json({ message: "Failed to create a site" });
+    }
+
+    await Business.updateOne(
+      { _id: createdBusiness._id },
+      { $addToSet: { sites: siteDoc._id } },
+      { session }
+    );
+
     await session.commitTransaction();
     session.endSession();
-    return response
-      .status(201)
-      .json({
-        message: "Business created",
-        business: businessDoc,
-        site: siteDoc,
-      });
+    return response.status(201).json({
+      message: "Business created",
+      business: businessDoc,
+      site: siteDoc,
+    });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -100,38 +111,43 @@ export const createBusiness = async (request: Request, response: Response) => {
 };
 
 export async function getBusinessesForUserId(userId: string) {
-  if(!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-    throw new Error("Invalid userId")
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid userId");
   }
 
-  const businesses = await Business.find({ "members.userId": new mongoose.Types.ObjectId(userId) })
+  const businesses = await Business.find({
+    "members.userId": new mongoose.Types.ObjectId(userId),
+  })
     .populate("invites")
     .populate({
       path: "members.userId",
       model: "User",
-      select: "_id fullname email"
+      select: "_id fullname email",
     })
     .lean()
-    .exec()
+    .exec();
 
-  return businesses
+  return businesses;
 }
 
-export async function fetchBusinessesForUser(request: Request, response: Response) {
+export async function fetchBusinessesForUser(
+  request: Request,
+  response: Response
+) {
   try {
-    const userId = String(request.user.userId).trim()
+    const userId = String(request.user.userId).trim();
     if (!userId) {
-      return response.status(400).json({ message: "token is required"})
+      return response.status(400).json({ message: "token is required" });
     }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return response.status(400).json({ messafe: "Invalid userId" })
+      return response.status(400).json({ messafe: "Invalid userId" });
     }
 
-    const businesses = await getBusinessesForUserId(userId)
-    return response.status(200).json({ businesses })
+    const businesses = await getBusinessesForUserId(userId);
+    return response.status(200).json({ businesses });
   } catch (error: any) {
-    console.log("fetchBusinessesForUser error:", error)
-    return response.status(500).json({ message: "Failed to fetch businesses"})
+    console.log("fetchBusinessesForUser error:", error);
+    return response.status(500).json({ message: "Failed to fetch businesses" });
   }
 }
