@@ -19,7 +19,7 @@ const InviteSchema = new Schema<InviteDocument>(
         invited: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         inviter: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         business: { type: Schema.Types.ObjectId, ref: 'Business', required: true },
-        role: { type: String, required: true },
+        role: { type: String, enum: ["owner", "manager", "viewer"], required: true },
         // roleRef: { type: Schema.Types.ObjectId, ref: 'Role' },
         token: { type: String, required: true, unique: true },
         status: {

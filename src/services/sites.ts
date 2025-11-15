@@ -2,8 +2,9 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 import Site from "../models/Site.js";
 import User from "../models/User.js";
-import {sendEmail} from "../utils/sendEmail.js";
+import { sendEmail } from "../utils/sendEmail.js";
 import type { Request, Response } from "express";
+import Business from "../models/Business.js";
 
 /*
 Behavior:
@@ -12,7 +13,12 @@ Behavior:
 - Send email notification in both cases (if sendEmail util exists).
 */
 
-export async function inviteToSite(siteId: string, email: string, role: "owner" | "manager" | "viewer", invitedBy?: string) {
+export async function inviteToSite(
+  siteId: string,
+  email: string,
+  role: "owner" | "manager" | "viewer",
+  invitedBy?: string
+) {
   const site = await Site.findById(siteId);
   if (!site) throw new Error("Site not found");
 
@@ -20,7 +26,9 @@ export async function inviteToSite(siteId: string, email: string, role: "owner" 
 
   if (user) {
     // Add to owners if not present
-    const exists = (site.members || []).some(o => String(o.userId) === String(user._id));
+    const exists = (site.members || []).some(
+      (o) => String(o.userId) === String(user._id)
+    );
     site.members = site.members || [];
     if (!exists) {
       site.members.push({ userId: user._id as mongoose.Types.ObjectId, role });
@@ -33,7 +41,9 @@ export async function inviteToSite(siteId: string, email: string, role: "owner" 
         from: "adebayoolowofoyeku@gmail.com",
         to: user.email,
         subject: `You've been added to site: ${site.name}`,
-        html: `${invitedBy ? `Invited by ${invitedBy}. ` : ""}You were granted "${role}" access to site "${site.name}".`,
+        html: `${
+          invitedBy ? `Invited by ${invitedBy}. ` : ""
+        }You were granted "${role}" access to site "${site.name}".`,
       });
     } catch (e) {
       console.warn("Email failed", e);
@@ -58,7 +68,7 @@ export async function inviteToSite(siteId: string, email: string, role: "owner" 
     // send invite email with token link (frontend should handle token)
     try {
       await sendEmail({
-        from: 'adebayoolowofoyeku@gmail.com',
+        from: "adebayoolowofoyeku@gmail.com",
         to: email,
         subject: `Invite to join site: ${site.name}`,
         html: `You've been invited to manage site "${site.name}" as "${role}". Use this token to register / accept: ${token}`,
@@ -81,12 +91,14 @@ export async function getSitesForUserId(userId: string) {
   }
 
   // find sites where members array contains this userId
-  const sites = await Site.find({ "members.userId": new mongoose.Types.ObjectId(userId) })
+  const sites = await Site.find({
+    "members.userId": new mongoose.Types.ObjectId(userId),
+  })
     .populate("business")
     .populate({
       path: "members.userId",
       model: "User",
-      select: "_id fullname email"
+      select: "_id fullname email",
     })
     .lean()
     .exec();
@@ -116,7 +128,6 @@ export async function fetchSitesForUser(request: Request, response: Response) {
     return response.status(500).json({ message: "Failed to fetch sites" });
   }
 }
-
 
 /**
  * Return full site details by siteId.
@@ -152,8 +163,7 @@ export async function getSiteDetails(siteId: string) {
  */
 export async function fetchSiteDetails(request: Request, response: Response) {
   try {
-    const siteId =
-      String(request.params.id).trim();
+    const siteId = String(request.params.id).trim();
 
     if (!siteId) {
       return response.status(400).json({ message: "siteId is required" });
@@ -171,7 +181,9 @@ export async function fetchSiteDetails(request: Request, response: Response) {
     return response.status(200).json({ site });
   } catch (err: any) {
     console.error("fetchSiteDetails error:", err);
-    return response.status(500).json({ message: "Failed to fetch site details" });
+    return response
+      .status(500)
+      .json({ message: "Failed to fetch site details" });
   }
 }
 
@@ -181,79 +193,130 @@ export async function fetchSiteDetails(request: Request, response: Response) {
  */
 export async function createSite(
   businessId: string,
-  options: { 
-    name?: string; 
-    address?: string; 
-    members?: Array<any>; 
-    metadata?: any, 
-    session?: any 
+  options: {
+    name?: string;
+    address?: string;
+    members?: Array<any>;
+    metadata?: any;
+    session?: any;
   } = {}
 ) {
-  const { name, address, members, metadata, session} = options
+  const { name, address, members, metadata, session } = options;
   if (!businessId || !mongoose.Types.ObjectId.isValid(businessId)) {
     throw new Error("Invalid businessId");
   }
 
   const siteDoc = await Site.create(
-    [{
-    business: new mongoose.Types.ObjectId(businessId),
-    name: options.name ?? undefined,
-    address: options.address ?? undefined,
-    members: options.members ?? [],
-    metadata: options.metadata ?? {},
-  }], {session});
+    [
+      {
+        business: new mongoose.Types.ObjectId(businessId),
+        name: options.name ?? undefined,
+        address: options.address ?? undefined,
+        members: options.members ?? [],
+        metadata: options.metadata ?? {},
+      },
+    ],
+    { session }
+  );
 
   return siteDoc[0];
 }
 
 export async function AddSite(request: Request, response: Response) {
-  // const session = await mongoose.startSession();
-  // session.startTransaction();
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const { businessId, name, address, members, metadata } = request.body;
 
     if (!businessId || !mongoose.Types.ObjectId.isValid(String(businessId))) {
-      // await session.abortTransaction();
-      // session.endSession();
-      return response.status(400).json({ message: "Valid businessId is required" });
+      await session.abortTransaction();
+      session.endSession();
+      console.log("Valid businessId is required")
+      return response
+        .status(400)
+        .json({ message: "Valid businessId is required" });
     }
 
-    // we can just add the user in the request from token as member 
+    if (!name || !address) {
+      await session.abortTransaction();
+      session.endSession();
+      console.log("Name and Adress are required")
+      return response
+        .status(400)
+        .json({ message: "Name and Adress are required" });
+    }
+
+    let memberIds: string[] = []
+
+    // we can just add the user in the request from token as member
     // we can also have an option in the frontend for users to add members
     if (members !== undefined) {
       if (!Array.isArray(members)) {
-        // await session.abortTransaction();
-        // session.endSession();
-        return response.status(400).json({ message: "members must be an array" });
+        await session.abortTransaction();
+        session.endSession();
+        console.log("members must be an array")
+        return response
+          .status(400)
+          .json({ message: "members must be an array" });
       }
 
-      const memberIds = Array.from(new Set(members.map((m: any) => String(m.userId ?? "").trim())));
-      const invalidIds = memberIds.filter((id: string) => !mongoose.Types.ObjectId.isValid(id));
+      memberIds = Array.from(
+        new Set(members.map((member) => String(member.userId ?? "").trim()))
+      );
+      const invalidIds = memberIds.filter(
+        (id: string) => !mongoose.Types.ObjectId.isValid(id)
+      );
       if (invalidIds.length) {
-        // await session.abortTransaction();
-        // session.endSession();
-        return response.status(400).json({ message: "Invalid user id(s) provided", invalidIds });
+        await session.abortTransaction();
+        session.endSession();
+        console.log("Invalid user id(s) provided")
+        return response
+          .status(400)
+          .json({ message: "Invalid user id(s) provided", invalidIds });
       }
 
       const users = await User.find({ _id: { $in: memberIds } }).select("_id");
-      const foundIds = new Set(users.map(u => String(u._id)));
+      const foundIds = new Set(users.map((u) => String(u._id)));
       const missing = memberIds.filter((id: string) => !foundIds.has(id));
       if (missing.length) {
-        // await session.abortTransaction();
-        // session.endSession();
-        return response.status(400).json({ message: "Some users were not found.", missing });
+        await session.abortTransaction();
+        session.endSession();
+        console.log("Some users were not found.")
+        return response
+          .status(400)
+          .json({ message: "Some users were not found.", missing });
       }
     }
 
-    const site = await createSite(String(businessId), { name, address, members, metadata });
+    const site = await createSite(String(businessId), {
+      name,
+      address,
+      members,
+      metadata,
+    });
 
-    // await session.commitTransaction();
-    // session.endSession();
+    if (!site) {
+      console.log("Site creation failed")
+      return response.status(400).json({ message: "Site creation failed"})
+    }
+
+    await Business.findByIdAndUpdate(businessId, {
+      $addToSet: { sites: site._id },
+    });
+
+    await User.updateMany(
+      { _id: { $in: memberIds } },
+      { $addToSet: { sites: site._id } },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
 
     return response.status(201).json({ message: "Site created", site });
   } catch (error: any) {
-    // await session.abortTransaction();
-    // session.endSession();
+    await session.abortTransaction();
+    session.endSession();
     console.error("AddSite error:", error);
     return response.status(500).json({ message: "Failed to create site" });
   }

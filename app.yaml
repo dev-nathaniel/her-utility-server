@@ -1,0 +1,10 @@
+runtime: nodejs20
+
+instance_class: F1
+
+env_variables:
+  MONGO_URI: "mongodb+srv://adebayoolowo:nathanielbayo@cluster0.xnd17me.mongodb.net/?appName=Cluster0"
+  SMTP_USER: "adebayoolowofoyeku@gmail.com"
+  SMTP_PASS: "yqlb fzpn tfdj fllo"
+  SECRET_KEY: "your_secret_key_here"
+  REFRESH_SECRET_KEY: "your_refresh_secret_key_here"
