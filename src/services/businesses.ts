@@ -177,7 +177,7 @@ export async function fetchBusinessMember(request:Request, response: Response) {
   console.log("Get business member endpoint hit")
   try {
     const { id: businessId, userId } = request.params;
-
+    console.log(businessId, userId)
     if (!businessId || !userId) {
       return response.status(400).json({ message: "Business id and user id are required"})
     }
@@ -189,6 +189,7 @@ export async function fetchBusinessMember(request:Request, response: Response) {
 
     // 1. Find the business and check membership
     const business = await Business.findById(businessId);
+    console.log(business, 'business')
     if (!business) {
       return response.status(404).json({ message: "Business not found" });
     }
