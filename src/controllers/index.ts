@@ -10,6 +10,7 @@ import pushNotificationRouter from "./pushNotification.js";
 import quotesRouter from "./quotes.js";
 import sitesRouter from "./sites.js";
 import utilitiesRouter from "./utilities.js";
+import emailRouter from "./email.js"
 
 
 const router = Router();
@@ -28,5 +29,6 @@ router.use("/sites", sitesRouter);
 router.use("/utilities", utilitiesRouter);
 router.use("/invites", inviteRouter)
 router.use("/push-notification", pushNotificationRouter);
+router.use("/email", emailRouter)
 
 export default router;

@@ -229,3 +229,41 @@ export async function fetchBusinessMember(request:Request, response: Response) {
     return response.status(500).json({ message: "Internal server error" });
   }
 }
+
+export async function updateMemberRole(request: Request, response: Response) {
+  console.log("Update member role endpoint hit")
+  try {
+    //check param member and business id is a string
+    const {id, memberId} = request.params
+    if (!id || !memberId) {
+      console.log("id and memberId are required")
+      return response.status(400).json({ message: "id and memberId are required" })
+    }
+    //check param member and business id is available
+    //check param member and business id is valid mongoose objectId
+    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(memberId)) {
+      console.log("Invalid id or memberId")
+      return response.status(400).json({ message: "Invalid id or memberId" });
+    }
+    //check business exists
+    const business = Business.findById(id)
+
+    if (!business) {
+      console.log("Business not found")
+      return response.status(404).json({ message: "Business not found" })
+    }
+    //check member exists in business
+    //check role is in body
+    //update business
+    const {role} = request.body
+    if (!role) {
+      console.log("Role is required")
+      return response.status(400).json({ message: "Role is required" })
+    }
+    
+    return response.status(200).json({message: "Successful"})
+  } catch (error) {
+    console.log("Error updating member role", error)
+    return response.status(500).json({ message: "Failed to update member role"})
+  }
+}

@@ -4,7 +4,7 @@ export interface IUser extends Document {
   fullname: string;
   email: string;
   password: string;
-  profilePicture?: mongoose.Schema.Types.ObjectId | null;
+  profilePicture?: string | null;
   role: "user" | "admin" | "guest" | "host";
   businesses?: mongoose.Schema.Types.ObjectId[]
   sites?: mongoose.Schema.Types.ObjectId[]

@@ -10,7 +10,7 @@ export interface ISite extends Document {
   business: mongoose.Types.ObjectId;
   address: string;
   // postcode: string;
-  members: ISiteMember[]; // includes owner/manager entries
+  members?: ISiteMember[]; // includes owner/manager entries
   utilities?: mongoose.Types.ObjectId[]; // refs to Utility
   metadata?: Record<string, any>;
 }
