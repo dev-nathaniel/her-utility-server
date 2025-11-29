@@ -1,10 +1,10 @@
 import {Router} from "express"
 import { changePassword, deleteUser, getUserById, getUsers, updateUser } from "../services/users.js"
-import { verifyTokenAndAdmin, verifyTokenAndAuthorization } from "../middlewares/verifyToken.js"
+import { verifyToken, verifyTokenAndAuthorization } from "../middlewares/verifyToken.js"
 
 const router = Router()
 
-router.get("/", verifyTokenAndAdmin, getUsers)
+router.get("/", verifyToken, getUsers)
 
 // router.get('/:id/profile-picture', getUserProfilePicture)
 

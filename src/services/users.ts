@@ -1,5 +1,8 @@
 import type { Request, Response } from "express";
 import User from "../models/User.js";
+import Business from "../models/Business.js";
+import Site from "../models/Site.js";
+import Utility from "../models/Utility.js";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
@@ -7,8 +10,25 @@ export async function getUsers(request: Request, response: Response) {
   console.log("Get users endpoint hit");
   try {
     const users = await User.find({}, { password: 0 }).sort({createdAt: -1});
-    response.status(200).send({message: 'Successful', users});
+    
+    const usersWithStats = await Promise.all(users.map(async (user) => {
+        const businessCount = await Business.countDocuments({ "members.userId": user._id });
+        const sites = await Site.find({ "members.userId": user._id }).select('_id');
+        const siteCount = sites.length;
+        const siteIds = sites.map(s => s._id);
+        const contractCount = await Utility.countDocuments({ site: { $in: siteIds } });
+
+        return {
+            ...user.toObject(),
+            numberOfBusinesses: businessCount,
+            numberOfSites: siteCount,
+            numberOfContracts: contractCount
+        };
+    }));
+
+    response.status(200).send({message: 'Successful', users: usersWithStats});
   } catch (error) {
+    console.error("Error fetching users:", error);
     response.status(400).send({ message: "Error fetching users" });
   }
 }
@@ -62,8 +82,21 @@ export async function getUserById(request: Request, response: Response) {
       response.status(404).send({ message: "User not found" });
       return;
     }
-    response.status(200).send({message: 'Successful', user});
+
+    const businesses = await Business.find({ "members.userId": user._id });
+    const sites = await Site.find({ "members.userId": user._id });
+    const siteIds = sites.map(s => s._id);
+    const contracts = await Utility.find({ site: { $in: siteIds } }).populate('site');
+
+    response.status(200).send({
+        message: 'Successful', 
+        user,
+        businesses,
+        sites,
+        contracts
+    });
   } catch (error) {
+    console.error("Error getting user:", error);
     response.status(400).send({ message: "Failed to get user" });
   }
 }

@@ -577,3 +577,23 @@ export async function logout(request: Request, response: Response) {
     response.status(500).send({ message: "Logout failed"})
   }
 }
+
+export async function getProfile(request: Request, response: Response) {
+  console.log("Get Profile Endpoint Hit");
+  try {
+    const userId = (request.user as any)?.userId;
+    if (!userId) {
+      return response.status(400).json({ message: "User ID missing from token" });
+    }
+
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return response.status(404).json({ message: "User not found" });
+    }
+
+    response.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    response.status(500).json({ message: "Failed to fetch profile" });
+  }
+}

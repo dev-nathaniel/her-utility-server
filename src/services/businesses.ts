@@ -3,6 +3,8 @@ import User from "../models/User.js";
 import mongoose from "mongoose";
 import Business from "../models/Business.js";
 import { createSite } from "./sites.js";
+import Site from "../models/Site.js";
+import Utility from "../models/Utility.js";
 
 export const createBusiness = async (request: Request, response: Response) => {
   const session = await mongoose.startSession();
@@ -265,5 +267,30 @@ export async function updateMemberRole(request: Request, response: Response) {
   } catch (error) {
     console.log("Error updating member role", error)
     return response.status(500).json({ message: "Failed to update member role"})
+  }
+}
+
+export async function getAllBusinesses(request: Request, response: Response) {
+  console.log("Get all businesses endpoint hit");
+  try {
+    const businesses = await Business.find().sort({ createdAt: -1 });
+
+    const businessesWithStats = await Promise.all(businesses.map(async (business) => {
+        const siteCount = await Site.countDocuments({ business: business._id });
+        const sites = await Site.find({ business: business._id }).select('_id');
+        const siteIds = sites.map(s => s._id);
+        const contractCount = await Utility.countDocuments({ site: { $in: siteIds } });
+
+        return {
+            ...business.toObject(),
+            numberOfSites: siteCount,
+            numberOfContracts: contractCount
+        };
+    }));
+
+    response.status(200).json({ message: "Successful", businesses: businessesWithStats });
+  } catch (error) {
+    console.error("Error fetching all businesses:", error);
+    response.status(500).json({ message: "Failed to fetch businesses" });
   }
 }

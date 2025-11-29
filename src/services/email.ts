@@ -1,98 +1,170 @@
 import type { Request, Response } from "express";
 import { sendEmail } from "../utils/sendEmail.js";
+import Email from "../models/Email.js";
+import Template from "../models/Template.js";
+import User from "../models/User.js";
+import Notification from "../models/Notification.js";
+import { io } from "../index.js";
+
+// Helper to get recipients based on group
+async function getRecipients(group: string, specificRecipients?: string[]): Promise<string[]> {
+  if ((!group || group === "specific") && specificRecipients) {
+    return specificRecipients;
+  }
+
+  let query = {};
+  if (group === "admins") query = { role: "admin" };
+  else if (group === "users") query = { role: "user" };
+  else if (group === "guests") query = { role: "guest" };
+  else if (group === "hosts") query = { role: "host" };
+  // "all" implies no filter
+
+  const users = await User.find(query).select("email");
+  return users.map((u) => u.email);
+}
 
 export async function createEmail(request: Request, response: Response) {
-  console.log("Email endpoint hit");
+  console.log("Create Email Endpoint Hit");
   try {
-    const { emailTo, subject } = request.body;
-    if (!emailTo) {
-      console.log("EmailTo is required");
-      return response.status(400).json({ message: "EmailTo is required" });
+    const { subject, message, recipientGroup, recipients, scheduledAt, templateId, templateVariables, saveAsDraft } = request.body;
+
+    if ((!message && !templateId) || (!subject && !templateId) || (!recipientGroup && (!recipients || recipients.length === 0))) {
+      return response.status(400).json({ message: "Subject, message (or template), and either recipient group or recipients are required" });
     }
 
-    await sendEmail({
-      from: "adebayoolowofoyeku@gmail.com",
-      to: emailTo,
-      subject: subject ?? "Email Endpoint",
-      html: `
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Email</title>
-  </head>
+    let emailContent = message;
+    let emailSubject = subject;
 
-  <body style="margin:0; padding:0; background:#F5F6FA; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
-    
-    <!-- Wrapper -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F6FA; padding: 40px 0;">
-      <tr>
-        <td align="center">
+    if (templateId) {
+      const template = await Template.findById(templateId);
+      if (!template) {
+        return response.status(404).json({ message: "Template not found" });
+      }
+      
+      // Perform variable substitution
+      let content = template.content;
+      let subj = template.subject;
 
-          <!-- Card -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background:#ffffff; border-radius: 16px; padding: 32px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
-            
-            <!-- Logo Circle -->
-            <tr>
-            <td align="center" style="padding-bottom:24px;">
-              <table width="64" height="64" cellpadding="0" cellspacing="0" 
-                style="background:#E8EDFF; border-radius:50%; text-align:center;">
-                <tr>
-                  <td style="vertical-align:middle; font-size:28px; font-weight:600; color:#3E63F5;">
-                    B
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+      if (templateVariables) {
+          for (const [key, value] of Object.entries(templateVariables)) {
+              const regex = new RegExp(`{{${key}}}`, 'g');
+              content = content.replace(regex, value as string);
+              subj = subj.replace(regex, value as string);
+          }
+      } else {
+        return response.status(400).json({ message: "Template variables are required" });
+      }
 
-            <!-- Title -->
-            <tr>
-              <td align="center" style="font-size:22px; font-weight:600; color:#1A1A1A; padding-bottom: 12px;">
-                Welcome to Your Business Portal
-              </td>
-            </tr>
+      if (!message) emailContent = content;
+      if (!subject) emailSubject = subj; 
+    }
 
-            <!-- Body Text -->
-            <tr>
-              <td style="font-size:15px; color:#4A4A4A; line-height:1.6; text-align:center; padding-bottom: 24px;">
-                Your account has been successfully created.  
-                You can now manage your businesses, sites, and members all in one place.
-              </td>
-            </tr>
-
-            <!-- Button -->
-            <tr>
-              <td align="center" style="padding-bottom: 24px;">
-                <a href="#" style="background:#3E63F5; color:#ffffff; padding: 14px 28px; border-radius: 10px; text-decoration:none; font-size:15px; font-weight:500; display:inline-block;">
-                  Go to Dashboard
-                </a>
-              </td>
-            </tr>
-
-            <!-- Divider -->
-            <tr>
-              <td style="border-top:1px solid #E5E7EB; padding-top: 20px; font-size:12px; color:#9A9A9A; text-align:center;">
-                If you have any issues, just reply to this email — we’re happy to help.
-              </td>
-            </tr>
-
-          </table>
-
-        </td>
-      </tr>
-    </table>
-
-  </body>
-</html>
-
-
-            `,
+    const email = new Email({
+      subject: emailSubject,
+      message: emailContent,
+      recipientGroup,
+      recipients: recipients || [],
+      status: saveAsDraft ? "draft" : (scheduledAt ? "scheduled" : "sent"),
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+      template: templateId,
+      templateVariables: templateVariables || {},
     });
-    return response.status(200).json({ message: "Email sent successfully"})
+
+    await email.save();
+
+    if (!saveAsDraft && !scheduledAt) {
+      // Send immediately
+      await sendEmailNow(email);
+    }
+
+    return response.status(201).json({ message: "Email created successfully", email });
   } catch (error) {
-    console.log("Failed to send email");
-    return response.status(500).json({ message: "Failed to send email" });
+    console.error("Failed to create email:", error);
+    return response.status(500).json({ message: "Failed to create email" });
   }
+}
+
+async function sendEmailNow(emailDoc: any) {
+  try {
+    const recipientEmails = await getRecipients(emailDoc.recipientGroup, emailDoc.recipients);
+    
+    // Send email (looping or bulk send depending on provider capabilities)
+    // For now, we loop. In production, use a bulk sending service or queue.
+    for (const email of recipientEmails) {
+        await sendEmail({
+            to: email,
+            subject: emailDoc.subject,
+            html: emailDoc.message,
+            from: "adebayoolowofoyeku@gmail.com" // Should be env var
+        });
+    }
+
+    emailDoc.status = "sent";
+    emailDoc.sentAt = new Date();
+    await emailDoc.save();
+
+    // Create Notifications and Emit Socket Events
+    // We need user IDs for notifications, so we might need to fetch users again or optimize getRecipients
+    // const users = await User.find({ email: { $in: recipientEmails } });
+    
+    // const notifications = users.map(user => ({
+    //     userId: user._id,
+    //     title: emailDoc.subject,
+    //     message: "You have a new email from Admin", // Or a snippet of the message
+    //     type: "email",
+    // }));
+
+    // if (notifications.length > 0) {
+    //     await Notification.insertMany(notifications);
+        
+    //     // users.forEach(user => {
+    //     //     io.to(user._id.toString()).emit("notification", {
+    //     //         title: emailDoc.subject,
+    //     //         message: "You have a new email from Admin",
+    //     //         type: "email"
+    //     //     });
+    //     // });
+    // }
+
+  } catch (error) {
+    console.error("Error sending email:", error);
+    emailDoc.status = "failed";
+    await emailDoc.save();
+  }
+}
+
+export async function listEmails(request: Request, response: Response) {
+    try {
+        const emails = await Email.find().sort({ createdAt: -1 });
+        response.status(200).json(emails);
+    } catch (error) {
+        response.status(500).json({ message: "Failed to fetch emails" });
+    }
+}
+
+export async function createTemplate(request: Request, response: Response) {
+    try {
+        const { name, category, subject, content } = request.body;
+
+        // Extract variables from subject and content
+        const variableRegex = /{{([^}]+)}}/g;
+        const subjectVars = [...subject.matchAll(variableRegex)].map(m => m[1]);
+        const contentVars = [...content.matchAll(variableRegex)].map(m => m[1]);
+        const variables = [...new Set([...subjectVars, ...contentVars])]; // Unique variables
+
+        const template = new Template({ name, category, subject, content, variables });
+        await template.save();
+        response.status(201).json(template);
+    } catch (error) {
+        response.status(500).json({ message: "Failed to create template" });
+    }
+}
+
+export async function listTemplates(request: Request, response: Response) {
+    try {
+        const templates = await Template.find().sort({ createdAt: -1 });
+        response.status(200).json(templates);
+    } catch (error) {
+        response.status(500).json({ message: "Failed to fetch templates" });
+    }
 }
