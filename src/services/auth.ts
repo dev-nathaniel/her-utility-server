@@ -8,6 +8,7 @@ import OTP from "../models/OTP.js";
 import RefreshToken, { type IRefreshToken } from "../models/RefreshToken.js";
 import mongoose from "mongoose";
 import { addLog } from "./logs.js";
+import { sendSuccess, sendError } from "../utils/response-helper.js";
 
 dotenv.config();
 
@@ -30,21 +31,18 @@ export async function login(request: Request, response: Response) {
     const { email, password } = request.body;
     if (!password || !email) {
       console.log("Email and password required")
-      response.status(400).send({ message: "Email and password are required" });
-      return;
+      return sendError(response, 400, "Email and password are required");
     }
     const user = (await User.findOne({email})) as IUser & { _id: any };
     if (!user) {
       console.log("Invalid credentials")
-      response.status(401).send({ message: "Invalid credentials" });
-      return;
+      return sendError(response, 401, "Invalid credentials");
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       console.log("Invalid credentials")
-      response.status(401).send({ message: "Invalid credentials" });
-      return;
+      return sendError(response, 401, "Invalid credentials");
     }
 
     const payload: Payload = {
@@ -67,8 +65,7 @@ export async function login(request: Request, response: Response) {
 
     await user.save()
 
-    response.status(200).send({
-      message: "Login successful",
+    sendSuccess(response, 200, "Login successful", {
       user: {
         id: user._id,
         fullname: user.fullname,
@@ -82,7 +79,7 @@ export async function login(request: Request, response: Response) {
     });
   } catch (error) {
       console.log("Login failed")
-    response.status(500).send({ message: "Login failed" });
+    sendError(response, 500, "Login failed");
   }
 }
 
@@ -91,18 +88,16 @@ export async function isEmailExisting(request: Request, response: Response) {
   try {
     const { email } = request.body;
     if (!email) {
-      response.status(400).send({ message: "email is required"})
-      return
+      return sendError(response, 400, "Email is required");
     }
     const existingUser = await User.findOne({email})
     if (existingUser) {
-      response.status(409).send({message: "User with this email already exists"})
-      return
+      return sendError(response, 409, "User with this email already exists");
     }
-    response.status(200).send({message: "New user", email: email})
+    sendSuccess(response, 200, "New user", { email });
   } catch (error) {
     console.log("Error during email check:", error);
-    response.status(500).send({ message: "Email CHeck failed" });
+    sendError(response, 500, "Email check failed");
   }
 }
 
@@ -112,18 +107,12 @@ export async function register(request: Request, response: Response) {
     const { fullname, email, password, role } = request.body;
     console.log("Request body:", request.body);
     if (!fullname || !email || !password) {
-      response
-        .status(400)
-        .send({ message: "Fullname, email, and password are required" });
-      return;
+      return sendError(response, 400, "Fullname, email, and password are required");
     }
     // Check if user already exists by email or username
     const existingUser = await User.findOne({email});
     if (existingUser) {
-      response
-        .status(409)
-        .send({ message: "User with this email or username already exists" });
-      return;
+      return sendError(response, 409, "User with this email or username already exists");
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -142,7 +131,6 @@ export async function register(request: Request, response: Response) {
       role,
     }) as IUser & { _id: any };
 
-    
     await user.save();
 
     const payload: Payload = {
@@ -154,8 +142,7 @@ export async function register(request: Request, response: Response) {
       expiresIn: "7d",
     });
 
-    response.status(201).send({
-      message: "User created successfully",
+    sendSuccess(response, 201, "User created successfully", {
       user: {
         id: user._id,
         fullname: user.fullname,
@@ -174,7 +161,7 @@ export async function register(request: Request, response: Response) {
     // });
   } catch (error) {
     console.log("Error during registration:", error);
-    response.status(400).send({ message: "Registration failed" });
+    sendError(response, 400, "Registration failed");
   }
 }
 
@@ -192,8 +179,7 @@ export async function guestLogin(request: Request, response: Response) {
           username: username,
         })) as typeof User.prototype & { _id: any };
         if (!guestUser) {
-          response.status(404).send({ message: "Guest user not found" });
-          return;
+          return sendError(response, 404, "Guest user not found");
         }
         const payload: Payload = {
           userId: guestUser._id.toString(),
@@ -214,8 +200,7 @@ export async function guestLogin(request: Request, response: Response) {
         guestUser.refreshTokens = guestUser.refreshTokens.concat(refreshTokenDoc._id)
 
         await guestUser.save()
-        response.status(200).send({
-          message: "Guest login successful",
+        sendSuccess(response, 200, "Guest login successful", {
           user: {
             id: guestUser._id,
             username: guestUser.username,
@@ -252,10 +237,7 @@ export async function guestLogin(request: Request, response: Response) {
       // if (!existingGuestUser) break;
       tries++;
       if (tries > 10) {
-        response
-          .status(500)
-          .send({ message: "Failed to generate unique guest username" });
-        return;
+        return sendError(response, 500, "Failed to generate unique guest username");
       }
     }
     const guestEmail = `${uniqueGuestUsername}@example.com`;
@@ -294,8 +276,7 @@ export async function guestLogin(request: Request, response: Response) {
     guestUser.refreshTokens = guestUser.refreshTokens.concat(refreshTokenDoc._id)
     await guestUser.save()
 
-    response.status(201).send({
-      message: "Guest user created successfully",
+    sendSuccess(response, 201, "Guest user created successfully", {
       user: {
         id: guestUser._id,
         username: guestUser.username,
@@ -309,7 +290,7 @@ export async function guestLogin(request: Request, response: Response) {
     });
   } catch (error) {
     console.log("Error during guest login:", error);
-    response.status(400).send({ message: "Guest login failed" });
+    sendError(response, 400, "Guest login failed");
   }
 }
 
@@ -321,16 +302,14 @@ export async function forgotPassword(request: Request, response: Response) {
   try {
     const { email } = request.body;
     if (!email) {
-      response.status(400).send({ message: "Email is required" });
-      return;
+      return sendError(response, 400, "Email is required");
     }
 
     const user = (await User.findOne({ email })) as typeof User.prototype & {
       _id: any;
     };
     if (!user) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
 
     // Generate 6-digit OTP
@@ -389,11 +368,9 @@ export async function forgotPassword(request: Request, response: Response) {
       `,
     });
 
-    response.status(200).send({
-      message: "OTP sent to email",
-    });
+    sendSuccess(response, 200, "OTP sent to email");
   } catch (error) {
-    response.status(400).send({ message: "OTP generation failed" });
+    sendError(response, 400, "OTP generation failed");
   }
 }
 
@@ -402,8 +379,7 @@ export async function verifyOtp(request: Request, response: Response) {
   try {
     const { email, otp } = request.body;
     if (!email || !otp) {
-      response.status(400).send({ message: "Email and OTP are required" });
-      return;
+      return sendError(response, 400, "Email and OTP are required");
     }
 
     const user = await User.findOne({ email });
@@ -414,27 +390,24 @@ export async function verifyOtp(request: Request, response: Response) {
       used: false,
     });
     if (!foundOTP) {
-      response.status(400).send({ message: "OTP not found or expired" });
-      return;
+      return sendError(response, 400, "OTP not found or expired");
     }
 
     if (Date.now() > foundOTP.expiresAt.getTime()) {
       await OTP.deleteOne({ _id: foundOTP._id });
-      response.status(400).send({ message: "OTP expired" });
-      return;
+      return sendError(response, 400, "OTP expired");
     }
 
     if (foundOTP.code !== otp) {
-      response.status(400).send({ message: "Invalid OTP" });
-      return;
+      return sendError(response, 400, "Invalid OTP");
     }
 
     // OTP is valid
     await OTP.deleteOne({ _id: foundOTP._id });
 
-    response.status(200).send({ message: "OTP verified successfully" });
+    sendSuccess(response, 200, "OTP verified successfully");
   } catch (error) {
-    response.status(400).send({ message: "Failed to verify OTP" });
+    sendError(response, 400, "Failed to verify OTP");
   }
 }
 
@@ -443,23 +416,19 @@ export async function resetPassword(request: Request, response: Response) {
   try {
     const { email, newPassword } = request.body;
     if (!email || !newPassword) {
-      response
-        .status(400)
-        .send({ message: "Email and new password are required" });
-      return;
+      return sendError(response, 400, "Email and new password are required");
     }
     const user = await User.findOne({ email });
     if (!user) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
     user.password = hashedPassword;
     await user.save();
-    response.status(200).send({ message: "Password reset successfully" });
+    sendSuccess(response, 200, "Password reset successfully");
   } catch (error) {
-    response.status(400).send({ message: "Failed to reset password" });
+    sendError(response, 400, "Failed to reset password");
   }
 }
 
@@ -467,21 +436,18 @@ export async function validateToken(request: Request, response: Response) {
   console.log("Validate Token Endpoint Hit");
   const token = request.headers.authorization;
   if (!token) {
-    response.status(401).send({ message: "Unauthorized" });
-    return;
+    return sendError(response, 401, "Unauthorized");
   }
   try {
     const decoded = await jwt.verify(token, jwt_secret_key);
     // console.log(decoded)
     const user = await User.findById((decoded as any)?.userId, { password: 0 }); // Exclude password from the response
     if (!user) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
-    // console.log(user)
-    response.status(200).send({ message: "Token is valid", user });
+    sendSuccess(response, 200, "Token is valid", { user });
   } catch (error) {
-    response.status(401).send({ message: "Invalid token" });
+    sendError(response, 401, "Invalid token");
   }
 }
 
@@ -490,31 +456,26 @@ export async function refreshToken(request: Request, response: Response) {
   let token = request.headers.authorization;
   console.log(token)
   if (!token) {
-    response.status(401).send({ message: "Unauthorized" });
-    return;
+    return sendError(response, 401, "Unauthorized");
   }
   if (token.startsWith("Bearer")) {
     token = token.slice(7).trim()
   } else {
-    response.status(401).send({ message: "Unauthorized" })
-    return
+    return sendError(response, 401, "Unauthorized");
   }
   try {
     // console.log("Token received:", token);
     const refreshTokenDoc = await RefreshToken.findOne({ token })
     if (!refreshTokenDoc) {
-      response.status(401).json({ message: "Refresh token not found"})
-      return;
+      return sendError(response, 401, "Refresh token not found");
     }
     if (!refreshTokenDoc.isValid) {
-      response.status(401).json({ message: "Refresh token revoked" })
-      return
+      return sendError(response, 401, "Refresh token revoked");
     }
     if (refreshTokenDoc.expiresAt.getTime() < Date.now()) {
       refreshTokenDoc.isValid = false
       await refreshTokenDoc.save()
-      response.status(401).json({ message: "Refresh token expired" })
-      return
+      return sendError(response, 401, "Refresh token expired");
     }
     const decoded = jwt.verify(token, jwt_refresh_secret_key);
     // console.log("Decoded token:", decoded);
@@ -523,15 +484,15 @@ export async function refreshToken(request: Request, response: Response) {
       role: (decoded as any).role,
     };
     const newToken = jwt.sign(payload, jwt_secret_key, { expiresIn: "1h" });
-    response.status(200).send({ message: "Token refreshed", token: newToken });
+    sendSuccess(response, 200, "Token refreshed", { token: newToken });
   } catch (error: any) {
     // console.error("Error refreshing token:", error);
     if (error.name === "TokenExpiredError") {
-      response.status(401).json({ message: "Token has expired" });
+      sendError(response, 401, "Token has expired");
     } else if (error.name === "JsonWebTokenError") {
-      response.status(401).json({ message: "Invalid token" });
+      sendError(response, 401, "Invalid token");
     } else {
-      response.status(500).json({ message: "Refresh token failed" });
+      sendError(response, 500, "Refresh token failed");
     }
     // response.status(401).send({ message: error.message, error: error.name });
   }
@@ -542,13 +503,12 @@ export async function logout(request: Request, response: Response) {
   try {
     let token = request.headers.authorization
     if (!token) {
-      response.status(400).send({ message: "Refresh token required to logout" })
-      return
+      return sendError(response, 400, "Refresh token required to logout");
     }
     if (token.startsWith("Bearer ")) {
       token = token.slice(7).trim()
     } else {
-      response.status(401).json({ message: "Unauthorized" })
+      return sendError(response, 401, "Unauthorized");
     }
     //fix later only the user should be able to log out
     
@@ -566,15 +526,14 @@ export async function logout(request: Request, response: Response) {
 
     const refreshTokenDoc = await RefreshToken.findOne({ token })
     if (!refreshTokenDoc) {
-      response.status(200).send({ message: "Logout successfully" })
-      return
+      return sendSuccess(response, 200, "Logout successfully");
     }
     refreshTokenDoc.isValid = false
     await refreshTokenDoc.save()
 
-    response.status(200).send({ message: "Logout successfully"})
+    sendSuccess(response, 200, "Logout successfully");
   } catch (error) {
-    response.status(500).send({ message: "Logout failed"})
+    sendError(response, 500, "Logout failed");
   }
 }
 
@@ -583,17 +542,17 @@ export async function getProfile(request: Request, response: Response) {
   try {
     const userId = (request.user as any)?.userId;
     if (!userId) {
-      return response.status(400).json({ message: "User ID missing from token" });
+      return sendError(response, 400, "User ID missing from token");
     }
 
     const user = await User.findById(userId).select("-password");
     if (!user) {
-      return response.status(404).json({ message: "User not found" });
+      return sendError(response, 404, "User not found");
     }
 
-    response.status(200).json(user);
+    sendSuccess(response, 200, "Profile fetched successfully", { user });
   } catch (error) {
     console.error("Error fetching profile:", error);
-    response.status(500).json({ message: "Failed to fetch profile" });
+    sendError(response, 500, "Failed to fetch profile");
   }
 }
