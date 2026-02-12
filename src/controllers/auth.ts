@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { forgotPassword, getProfile, guestLogin, isEmailExisting, login, logout, refreshToken, register, resetPassword, validateToken, verifyOtp } from "../services/auth.js"
+import { forgotPassword, getProfile, guestLogin, isEmailExisting, login, logout, refreshToken, register, registerPushToken, resetPassword, unregisterPushToken, validateToken, verifyOtp } from "../services/auth.js"
 import { verifyToken, verifyTokenAndAuthorization } from "../middlewares/verifyToken.js";
 
 
@@ -16,5 +16,7 @@ router.post("/verify-otp", verifyOtp);
 router.post("/reset-password", resetPassword);
 router.post("/logout", logout)
 router.get("/profile", verifyToken, getProfile);
+router.post("/push-token", verifyToken, registerPushToken);
+router.delete("/push-token", verifyToken, unregisterPushToken);
 
 export default router;

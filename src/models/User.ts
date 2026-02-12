@@ -13,6 +13,7 @@ export interface IUser extends Document {
   expoPushTokens?: string[];
   refreshTokens: mongoose.Schema.Types.ObjectId[]
   status: "pending" | "active" | "inactive";
+  pushNotificationsEnabled: boolean;
 }
 
 const userSchema: Schema = new Schema({
@@ -27,7 +28,8 @@ const userSchema: Schema = new Schema({
   expoPushTokens: [{ type: String }],
   businesses: [{type: mongoose.Schema.Types.ObjectId, ref: 'Business'}],
   sites: [{type: mongoose.Schema.Types.ObjectId, ref: 'Site'}],
-  refreshTokens: [{type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken'}]
+  refreshTokens: [{type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken'}],
+  pushNotificationsEnabled: { type: Boolean, default: true }
 }, { timestamps: true });
 
 const User = mongoose.model<IUser>("User", userSchema);

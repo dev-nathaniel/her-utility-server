@@ -556,3 +556,63 @@ export async function getProfile(request: Request, response: Response) {
     sendError(response, 500, "Failed to fetch profile");
   }
 }
+
+export async function registerPushToken(request: Request, response: Response) {
+  console.log("Register Push Token Endpoint Hit");
+  try {
+    const { token } = request.body;
+    const userId = (request.user as any)?.userId;
+
+    if (!token) {
+      return sendError(response, 400, "Push token is required");
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return sendError(response, 404, "User not found");
+    }
+
+    // Add token if it doesn't exist
+    if (!user.expoPushTokens?.includes(token)) {
+      user.expoPushTokens = [...(user.expoPushTokens || []), token];
+      await user.save();
+      console.log(`Token ${token} registered for user ${user._id}`);
+    }
+
+    sendSuccess(response, 200, "Push token registered successfully");
+  } catch (error) {
+    console.error("Error registering push token:", error);
+    sendError(response, 500, "Failed to register push token");
+  }
+}
+
+export async function unregisterPushToken(request: Request, response: Response) {
+  console.log("Unregister Push Token Endpoint Hit");
+  try {
+    const { token } = request.body;
+    const userId = (request.user as any)?.userId;
+
+    if (!token) {
+      return sendError(response, 400, "Push token is required");
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return sendError(response, 404, "User not found");
+    }
+
+    // Remove token
+    const initialCount = user.expoPushTokens?.length || 0;
+    user.expoPushTokens = (user.expoPushTokens || []).filter(t => t !== token);
+    
+    if (user.expoPushTokens.length !== initialCount) {
+      await user.save();
+      console.log(`Token ${token} unregistered for user ${user._id}`);
+    }
+
+    sendSuccess(response, 200, "Push token unregistered successfully");
+  } catch (error) {
+    console.error("Error unregistering push token:", error);
+    sendError(response, 500, "Failed to unregister push token");
+  }
+}
