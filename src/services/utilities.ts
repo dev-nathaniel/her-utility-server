@@ -8,13 +8,47 @@ import { sendSuccess, sendError } from "../utils/response-helper.js";
 export async function getUtilities(request: Request, response: Response) {
   console.log("Get utilities endpoint hit");
   try {
-    const utilities = await Utility.find()
+    const { search, status } = request.query;
+    const query: any = {};
+
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    if (search) {
+      // Basic search on supplier or identifier
+      // Note: Searching populated fields (business name) requires aggregate or post-processing
+      // For now, let's search simpler fields first
+      query.$or = [
+        { supplier: { $regex: search, $options: "i" } },
+        { identifier: { $regex: search, $options: "i" } },
+        // { 'business.name': { $regex: search, $options: "i" } } // This won't work with simple find()
+      ];
+    }
+
+    const utilities = await Utility.find(query)
       .populate("site")
       .populate("business")
       .sort({ createdAt: -1 });
-    response.status(200).send({ message: "Successful", utilities });
+
+    // Optional: Filter by business name in memory if search is present
+    // This is not efficient for large datasets but works for now
+    let finalUtilities = utilities;
+    if (search) {
+      const searchLower = (search as string).toLowerCase();
+      finalUtilities = utilities.filter(u => {
+        const busName = (u.business as any)?.name?.toLowerCase() || "";
+        const supplier = u.supplier?.toLowerCase() || "";
+        const identifier = u.identifier?.toLowerCase() || "";
+        return busName.includes(searchLower) || supplier.includes(searchLower) || identifier.includes(searchLower);
+      });
+    }
+
+    // Use sendSuccess for consistent response shape: { success: true, message: "...", data: { utilities: ... } }
+    sendSuccess(response, 200, "Successful", { utilities: finalUtilities });
   } catch (error) {
-    response.status(400).send({ message: "Error fetching utilities" });
+    console.error("Error fetching utilities:", error);
+    sendError(response, 400, "Error fetching utilities");
   }
 }
 

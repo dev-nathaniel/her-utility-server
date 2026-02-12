@@ -334,7 +334,7 @@ export async function forgotPassword(request: Request, response: Response) {
         <table align="center" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(69,155,251,0.08); overflow: hidden;">
         <tr>
           <td style="background: #459bfb; padding: 24px 0; text-align: center;">
-          <h1 style="color: #fff; margin: 0; font-family: Arial, sans-serif; font-size: 28px; letter-spacing: 1px;">Breakthrough Family</h1>
+          <h1 style="color: #fff; margin: 0; font-family: Arial, sans-serif; font-size: 28px; letter-spacing: 1px;">Her Utility</h1>
           </td>
         </tr>
         <tr>
@@ -354,13 +354,13 @@ export async function forgotPassword(request: Request, response: Response) {
           </p>
           <p style="font-size: 15px; color: #888; margin-bottom: 0;">
             Thank you,<br>
-            <span style="color: #459bfb;">Breakthrough Family Team</span>
+            <span style="color: #459bfb;">Her Utility Team</span>
           </p>
           </td>
         </tr>
         <tr>
           <td style="background: #f4f8fb; text-align: center; padding: 16px 0; font-size: 13px; color: #aaa;">
-          &copy; ${new Date().getFullYear()} Breakthrough Family. All rights reserved.
+          &copy; ${new Date().getFullYear()} Her Utility. All rights reserved.
           </td>
         </tr>
         </table>
