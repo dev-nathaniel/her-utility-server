@@ -1,25 +1,42 @@
+// MUST be first — patch Express globally
+// import "./tracer/globalPatch.js";
 import express from 'express';
+// import { autoTrace } from './tracer/index.js';
 import dotenv from 'dotenv';
-import routes from "./controllers/index.js";
 import cors from 'cors';
 import mongoose from 'mongoose';
 import nodemailer from 'nodemailer';
 import { createServer, Server } from 'node:http';
+import routes from "./controllers/index.js";
 
 dotenv.config();
 
 const mongoURI = process.env.MONGO_URI || '';
 
 mongoose
-    .connect(mongoURI)
-    .then(() => {
-        console.log('Connected to MongoDB');
-    })
-    .catch((err) => {
-        console.error('Error connecting to MongoDB:', err);
-    });
-    
+  .connect(mongoURI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch((err) => {
+    console.error('Error connecting to MongoDB:', err);
+  });
+
 const app = express();
+
+// ONE LINE - that's it!
+// autoTrace(app,
+//    {
+//   canvasId: 'your-canvas-id-from-dashboard',
+//   wsUrl: 'wss://your-canvas-backend.com'
+// }
+// );
+
+
+// Initialize tracer with Express
+// const tracer = initTracer(app, {
+//   output: (data) => console.log("[TRACE]", JSON.stringify(data)),
+// });
 
 const PORT = process.env.PORT || 5000;
 

@@ -33,7 +33,7 @@ export async function login(request: Request, response: Response) {
       response.status(400).send({ message: "Email and password are required" });
       return;
     }
-    const user = (await User.findOne({email})) as IUser & { _id: any };
+    const user = (await User.findOne({ email })) as IUser & { _id: any };
     if (!user) {
       console.log("Invalid credentials")
       response.status(401).send({ message: "Invalid credentials" });
@@ -47,6 +47,16 @@ export async function login(request: Request, response: Response) {
       return;
     }
 
+    // if (user.status === 'pending') {
+    //     response.status(403).send({ message: "Account pending approval" });
+    //     return;
+    // }
+
+    // if (user.status === 'suspended') {
+    //     response.status(403).send({ message: "Account suspended" });
+    //     return;
+    // }
+
     const payload: Payload = {
       userId: user._id.toString(),
       role: user.role,
@@ -59,9 +69,9 @@ export async function login(request: Request, response: Response) {
     const refreshTokenDoc = (await RefreshToken.create({
       token: refreshToken,
       userId: user._id,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       isValid: true
-    })) as IRefreshToken & {_id: any}
+    })) as IRefreshToken & { _id: any }
 
     user.refreshTokens = user.refreshTokens.concat(refreshTokenDoc._id as any)
 
@@ -81,7 +91,7 @@ export async function login(request: Request, response: Response) {
       refreshToken,
     });
   } catch (error) {
-      console.log("Login failed")
+    console.log("Login failed")
     response.status(500).send({ message: "Login failed" });
   }
 }
@@ -91,15 +101,15 @@ export async function isEmailExisting(request: Request, response: Response) {
   try {
     const { email } = request.body;
     if (!email) {
-      response.status(400).send({ message: "email is required"})
+      response.status(400).send({ message: "email is required" })
       return
     }
-    const existingUser = await User.findOne({email})
+    const existingUser = await User.findOne({ email })
     if (existingUser) {
-      response.status(409).send({message: "User with this email already exists"})
+      response.status(409).send({ message: "User with this email already exists" })
       return
     }
-    response.status(200).send({message: "New user", email: email})
+    response.status(200).send({ message: "New user", email: email })
   } catch (error) {
     console.log("Error during email check:", error);
     response.status(500).send({ message: "Email CHeck failed" });
@@ -118,7 +128,7 @@ export async function register(request: Request, response: Response) {
       return;
     }
     // Check if user already exists by email or username
-    const existingUser = await User.findOne({email});
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       response
         .status(409)
@@ -140,9 +150,10 @@ export async function register(request: Request, response: Response) {
       email,
       password: hashedPassword,
       role,
+      // status: role === 'admin' ? 'pending' : 'active'
     }) as IUser & { _id: any };
 
-    
+
     await user.save();
 
     const payload: Payload = {
@@ -503,7 +514,7 @@ export async function refreshToken(request: Request, response: Response) {
     // console.log("Token received:", token);
     const refreshTokenDoc = await RefreshToken.findOne({ token })
     if (!refreshTokenDoc) {
-      response.status(401).json({ message: "Refresh token not found"})
+      response.status(401).json({ message: "Refresh token not found" })
       return;
     }
     if (!refreshTokenDoc.isValid) {
@@ -551,7 +562,7 @@ export async function logout(request: Request, response: Response) {
       response.status(401).json({ message: "Unauthorized" })
     }
     //fix later only the user should be able to log out
-    
+
     // jwt.verify(token, jwt_refresh_secret_key, (err, user) => {
     //   if (err) {
     //     response.status(403).json({ message: "Token is not valid" })
@@ -572,9 +583,9 @@ export async function logout(request: Request, response: Response) {
     refreshTokenDoc.isValid = false
     await refreshTokenDoc.save()
 
-    response.status(200).send({ message: "Logout successfully"})
+    response.status(200).send({ message: "Logout successfully" })
   } catch (error) {
-    response.status(500).send({ message: "Logout failed"})
+    response.status(500).send({ message: "Logout failed" })
   }
 }
 

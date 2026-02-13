@@ -8,6 +8,7 @@ export interface IUser extends Document {
   password: string;
   profilePicture?: string | null;
   role: "user" | "admin" | "guest" | "host";
+  // status: "active" | "pending" | "suspended";
   businesses?: mongoose.Schema.Types.ObjectId[]
   sites?: mongoose.Schema.Types.ObjectId[]
   expoPushTokens?: string[];
@@ -21,11 +22,12 @@ const userSchema: Schema = new Schema({
   password: { type: String, required: true },
   profilePicture: { type: String, default: null },
   role: { type: String, enum: ["user", "admin", "guest", "host"], default: "user" },
+  // status: { type: String, enum: ["active", "pending", "suspended"], default: "active" },
   // profilePicture: { type: mongoose.Schema.Types.ObjectId, default: null },
   expoPushTokens: [{ type: String }],
-  businesses: [{type: mongoose.Schema.Types.ObjectId, ref: 'Business'}],
-  sites: [{type: mongoose.Schema.Types.ObjectId, ref: 'Site'}],
-  refreshTokens: [{type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken'}]
+  businesses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Business' }],
+  sites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Site' }],
+  refreshTokens: [{ type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken' }]
 }, { timestamps: true });
 
 const User = mongoose.model<IUser>("User", userSchema);

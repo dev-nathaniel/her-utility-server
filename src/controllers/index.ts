@@ -15,9 +15,11 @@ import emailRouter from "./email.js"
 
 const router = Router();
 
+
 router.get("/", (request: Request, response: Response) => {
   response.send({ message: "Active" });
 });
+// console.log("Controllers loaded");
 
 router.use("/auth", authRouter);
 router.use("/users", userRouter);

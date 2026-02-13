@@ -185,13 +185,36 @@ export async function deleteUser(request: Request, response: Response) {
   }
 }
 
-// export async function createUser(
-//   request: Request<{}, {}, {}, CreateUserQueryParams>,
-//   response: Response
-// ) {
-//   response.status(201).send({
-//     id: 1,
-//     username: "test",
-//     email: "test@gmail.com",
-//   });
+// export async function getAdmins(request: Request, response: Response) {
+//   console.log("Get admins endpoint hit");
+//   try {
+//     const { status } = request.query;
+//     const query: any = { role: "admin" };
+//     if (status) {
+//       query.status = status;
+//     }
+
+//     const admins = await User.find(query, { password: 0 }).sort({ createdAt: -1 });
+//     response.status(200).send({ message: "Successful", admins });
+//   } catch (error) {
+//     console.error("Error fetching admins:", error);
+//     response.status(500).send({ message: "Failed to fetch admins" });
+//   }
+// }
+
+// export async function approveAdmin(request: Request, response: Response) {
+//   console.log("Approve admin endpoint hit");
+//   try {
+//     const { id } = request.params;
+//     const user = await User.findByIdAndUpdate(id, { status: "active" }, { new: true });
+    
+//     if (!user) {
+//       return response.status(404).send({ message: "User not found" });
+//     }
+
+//     response.status(200).send({ message: "Admin approved successfully", user });
+//   } catch (error) {
+//     console.error("Error approving admin:", error);
+//     response.status(500).send({ message: "Failed to approve admin" });
+//   }
 // }

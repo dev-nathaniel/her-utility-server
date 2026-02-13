@@ -7,7 +7,7 @@ import Utility from "../models/Utility.js";
 import Email from "../models/Email.js";
 import Template from "../models/Template.js";
 
-export const getDashboardOverview = async (request:Request, response: Response) => {
+export const getDashboardOverview = async (request: Request, response: Response) => {
     console.log("Get dashboard overview endpoint hit")
     try {
         const userCount = await User.countDocuments();
@@ -17,21 +17,25 @@ export const getDashboardOverview = async (request:Request, response: Response) 
         const contractsCount = await Utility.countDocuments();
         const emailsSentCount = await Email.countDocuments({ status: 'sent' });
         const templatesCount = await Template.countDocuments();
+        // const activeAdminsCount = await User.countDocuments({ role: 'admin', status: 'active' });
+        // const pendingAdminsCount = await User.countDocuments({ role: 'admin', status: 'pending' });
 
-        response.status(200).json({ 
-            message: "Dashboard overview retrieved successfully", 
+        response.status(200).json({
+            message: "Dashboard overview retrieved successfully",
             overview: {
-                userCount, 
-                businessCount, 
+                userCount,
+                businessCount,
                 siteCount,
                 pendingQuotesCount,
                 contractsCount,
                 emailsSentCount,
-                templatesCount
-            } 
+                templatesCount,
+                // activeAdminsCount,
+                // pendingAdminsCount
+            }
         });
     } catch (error) {
         console.error("Error fetching dashboard overview:", error)
-        response.status(500).json({ message: "Failed to get dashboard overview"})
+        response.status(500).json({ message: "Failed to get dashboard overview" })
     }
 }
