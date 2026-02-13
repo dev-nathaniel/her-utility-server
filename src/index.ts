@@ -9,6 +9,9 @@ import nodemailer from 'nodemailer';
 import { createServer, Server } from 'node:http';
 import routes from "./controllers/index.js";
 
+//rate limiting
+//password trial limit
+
 dotenv.config();
 
 const mongoURI = process.env.MONGO_URI || '';

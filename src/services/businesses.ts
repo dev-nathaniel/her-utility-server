@@ -5,6 +5,8 @@ import Business from "../models/Business.js";
 import { createSite } from "./sites.js";
 import Site from "../models/Site.js";
 import Utility from "../models/Utility.js";
+import { sendSuccess, sendError } from "../utils/response-helper.js";
+import { parsePaginationParams, buildPaginationMeta } from "../utils/pagination.js";
 
 export const createBusiness = async (request: Request, response: Response) => {
   const session = await mongoose.startSession();
@@ -12,12 +14,10 @@ export const createBusiness = async (request: Request, response: Response) => {
   try {
     const { name, address, members } = request.body;
     if (!members || !name || !address) {
-      return response.status(400).json({ message: "Missing required fields." });
+      return sendError(response, 400, "Missing required fields.");
     }
     if (!Array.isArray(members) || members.length === 0) {
-      return response.status(400).json({
-        message: "members must be a non-empty array of user ids and role",
-      });
+      return sendError(response, 400, "members must be a non-empty array of user ids and role");
     }
     //check if there is userId and/or role
     console.log(members, "members");
@@ -31,17 +31,13 @@ export const createBusiness = async (request: Request, response: Response) => {
     console.log(invalidIds, "invalid Ids");
 
     if (invalidIds.length) {
-      return response
-        .status(400)
-        .json({ message: "Invalid user id(s) provided", invalidIds });
+      return sendError(response, 400, "Invalid user id(s) provided", { invalidIds });
     }
     const users = await User.find({ _id: { $in: membersIds } }).select("_id");
     const foundIds = new Set(users.map((user) => String(user._id)));
     const missing = membersIds.filter((id) => !foundIds.has(id));
     if (missing.length) {
-      return response
-        .status(400)
-        .json({ message: "Some users were not found.", missing });
+      return sendError(response, 400, "Some users were not found.", { missing });
     }
     const businessDoc = await Business.create(
       [
@@ -59,9 +55,7 @@ export const createBusiness = async (request: Request, response: Response) => {
       await session.abortTransaction();
       session.endSession();
       console.error("createBusiness error: created business document missing");
-      return response
-        .status(500)
-        .json({ message: "Failed to create a business" });
+      return sendError(response, 500, "Failed to create a business");
     }
 
     const createdBusiness = businessDoc[0];
@@ -72,43 +66,37 @@ export const createBusiness = async (request: Request, response: Response) => {
       { session }
     );
 
-    // create default first site for this business using the business details
-    const siteDoc = await createSite(String(createdBusiness._id), {
-      name: createdBusiness.name,
-      address: createdBusiness.address,
-      members: createdBusiness.members,
-      session,
-    });
+    // Auto-site creation disabled — sites are now added separately
+    // const siteDoc = await createSite(String(createdBusiness._id), {
+    //   name: createdBusiness.name,
+    //   address: createdBusiness.address,
+    //   members: createdBusiness.members,
+    //   session,
+    // });
 
-    if (!siteDoc) {
-      await session.abortTransaction();
-      session.endSession();
-      console.error("createSite error: created site document missing");
-      return response
-        .status(500)
-        .json({ message: "Failed to create a site" });
-    }
+    // if (!siteDoc) {
+    //   await session.abortTransaction();
+    //   session.endSession();
+    //   console.error("createSite error: created site document missing");
+    //   return sendError(response, 500, "Failed to create a site");
+    // }
 
-    await Business.updateOne(
-      { _id: createdBusiness._id },
-      { $addToSet: { sites: siteDoc._id } },
-      { session }
-    );
+    // await Business.updateOne(
+    //   { _id: createdBusiness._id },
+    //   { $addToSet: { sites: siteDoc._id } },
+    //   { session }
+    // );
 
     await session.commitTransaction();
     session.endSession();
-    return response.status(201).json({
-      message: "Business created",
-      business: businessDoc,
-      site: siteDoc,
+    sendSuccess(response, 201, "Business created", {
+      business: createdBusiness,
     });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     console.error("createBusiness error:", error);
-    return response
-      .status(500)
-      .json({ message: "Failed to create a business" });
+    sendError(response, 500, "Failed to create a business");
   }
 };
 
@@ -121,6 +109,7 @@ export async function getBusinessesForUserId(userId: string) {
     "members.userId": new mongoose.Types.ObjectId(userId),
   })
     .populate("invites")
+    .populate("utilities")
     .populate({
       path: "members.userId",
       model: "User",
@@ -139,18 +128,18 @@ export async function fetchBusinessesForUser(
   try {
     const userId = String(request.user.userId).trim();
     if (!userId) {
-      return response.status(400).json({ message: "token is required" });
+      return sendError(response, 400, "Token is required");
     }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return response.status(400).json({ messafe: "Invalid userId" });
+      return sendError(response, 400, "Invalid userId");
     }
 
     const businesses = await getBusinessesForUserId(userId);
-    return response.status(200).json({ businesses });
+    sendSuccess(response, 200, "Successful", { businesses });
   } catch (error: any) {
     console.log("fetchBusinessesForUser error:", error);
-    return response.status(500).json({ message: "Failed to fetch businesses" });
+    sendError(response, 500, "Failed to fetch businesses");
   }
 }
 
@@ -166,12 +155,12 @@ export async function fetchBusiness(request: Request, response: Response) {
   })
     .populate("invites")
     if (!business) {
-      return response.status(404).json({ message: "Business not found" })
+      return sendError(response, 404, "Business not found");
     }
-    return response.status(200).json({ message: 'successful', business})
+    sendSuccess(response, 200, "Successful", { business });
   } catch (error) {
     console.log("error fetching business", error)
-    return response.status(500).json({ message: "Failed to fetch business by ID"})
+    sendError(response, 500, "Failed to fetch business by ID");
   }
 }
 
@@ -181,19 +170,19 @@ export async function fetchBusinessMember(request:Request, response: Response) {
     const { id: businessId, userId } = request.params;
     console.log(businessId, userId)
     if (!businessId || !userId) {
-      return response.status(400).json({ message: "Business id and user id are required"})
+      return sendError(response, 400, "Business id and user id are required");
     }
 
     // Validate ObjectIds
     if (!mongoose.Types.ObjectId.isValid(businessId) || !mongoose.Types.ObjectId.isValid(userId)) {
-      return response.status(400).json({ message: "Invalid businessId or userId" });
+      return sendError(response, 400, "Invalid businessId or userId");
     }
 
     // 1. Find the business and check membership
     const business = await Business.findById(businessId);
     console.log(business, 'business')
     if (!business) {
-      return response.status(404).json({ message: "Business not found" });
+      return sendError(response, 404, "Business not found");
     }
 
     // Check if user is in the business members array
@@ -202,9 +191,7 @@ export async function fetchBusinessMember(request:Request, response: Response) {
     );
 
     if (!memberRecord) {
-      return response.status(403).json({
-        message: "User is not a member of this business"
-      });
+      return sendError(response, 403, "User is not a member of this business");
     }
 
     // 2. Fetch user with only needed fields
@@ -213,7 +200,7 @@ export async function fetchBusinessMember(request:Request, response: Response) {
       .lean();
 
     if (!user) {
-      return response.status(404).json({ message: "User not found" });
+      return sendError(response, 404, "User not found");
     }
 
     // 3. Attach the role (from business.members)
@@ -224,11 +211,11 @@ export async function fetchBusinessMember(request:Request, response: Response) {
       role: memberRecord.role, // owner | manager | viewer
     };
 
-    return response.status(200).json(result);
+    sendSuccess(response, 200, "Successful", result);
 
   } catch (error) {
     console.error("Error fetching business member:", error);
-    return response.status(500).json({ message: "Internal server error" });
+    sendError(response, 500, "Internal server error");
   }
 }
 
@@ -239,20 +226,20 @@ export async function updateMemberRole(request: Request, response: Response) {
     const {id, memberId} = request.params
     if (!id || !memberId) {
       console.log("id and memberId are required")
-      return response.status(400).json({ message: "id and memberId are required" })
+      return sendError(response, 400, "id and memberId are required");
     }
     //check param member and business id is available
     //check param member and business id is valid mongoose objectId
     if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(memberId)) {
       console.log("Invalid id or memberId")
-      return response.status(400).json({ message: "Invalid id or memberId" });
+      return sendError(response, 400, "Invalid id or memberId");
     }
     //check business exists
     const business = Business.findById(id)
 
     if (!business) {
       console.log("Business not found")
-      return response.status(404).json({ message: "Business not found" })
+      return sendError(response, 404, "Business not found");
     }
     //check member exists in business
     //check role is in body
@@ -260,20 +247,26 @@ export async function updateMemberRole(request: Request, response: Response) {
     const {role} = request.body
     if (!role) {
       console.log("Role is required")
-      return response.status(400).json({ message: "Role is required" })
+      return sendError(response, 400, "Role is required");
     }
     
-    return response.status(200).json({message: "Successful"})
+    sendSuccess(response, 200, "Successful");
   } catch (error) {
     console.log("Error updating member role", error)
-    return response.status(500).json({ message: "Failed to update member role"})
+    sendError(response, 500, "Failed to update member role");
   }
 }
 
 export async function getAllBusinesses(request: Request, response: Response) {
   console.log("Get all businesses endpoint hit");
   try {
-    const businesses = await Business.find().sort({ createdAt: -1 });
+    const { page, pageSize, skip } = parsePaginationParams(request);
+    const totalItems = await Business.countDocuments();
+
+    const businesses = await Business.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize);
 
     const businessesWithStats = await Promise.all(businesses.map(async (business) => {
         const siteCount = await Site.countDocuments({ business: business._id });
@@ -288,9 +281,11 @@ export async function getAllBusinesses(request: Request, response: Response) {
         };
     }));
 
-    response.status(200).json({ message: "Successful", businesses: businessesWithStats });
+    const pagination = buildPaginationMeta(totalItems, page, pageSize);
+
+    sendSuccess(response, 200, "Successful", { businesses: businessesWithStats, pagination });
   } catch (error) {
     console.error("Error fetching all businesses:", error);
-    response.status(500).json({ message: "Failed to fetch businesses" });
+    sendError(response, 500, "Failed to fetch businesses");
   }
 }

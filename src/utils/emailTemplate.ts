@@ -17,20 +17,6 @@ export function getDefaultEmailTemplate(subject: string, content: string): strin
 
           <!-- Card -->
           <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background:#ffffff; border-radius: 16px; padding: 32px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
-            
-            <!-- Logo Circle -->
-            <tr>
-            <td align="center" style="padding-bottom:24px;">
-              <table width="64" height="64" cellpadding="0" cellspacing="0" 
-                style="background:#E8EDFF; border-radius:50%; text-align:center;">
-                <tr>
-                  <td style="vertical-align:middle; font-size:28px; font-weight:600; color:#3B50DF;">
-                    H
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
 
             <!-- Title -->
             <tr>

@@ -13,6 +13,8 @@ export interface IUser extends Document {
   sites?: mongoose.Schema.Types.ObjectId[]
   expoPushTokens?: string[];
   refreshTokens: mongoose.Schema.Types.ObjectId[]
+  status: "pending" | "active" | "inactive";
+  pushNotificationsEnabled: boolean;
 }
 
 const userSchema: Schema = new Schema({
@@ -22,12 +24,13 @@ const userSchema: Schema = new Schema({
   password: { type: String, required: true },
   profilePicture: { type: String, default: null },
   role: { type: String, enum: ["user", "admin", "guest", "host"], default: "user" },
-  // status: { type: String, enum: ["active", "pending", "suspended"], default: "active" },
+  status: { type: String, enum: ["pending", "active", "inactive"], default: "active" },
   // profilePicture: { type: mongoose.Schema.Types.ObjectId, default: null },
   expoPushTokens: [{ type: String }],
   businesses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Business' }],
   sites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Site' }],
-  refreshTokens: [{ type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken' }]
+  refreshTokens: [{ type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken' }],
+  pushNotificationsEnabled: { type: Boolean, default: true }
 }, { timestamps: true });
 
 const User = mongoose.model<IUser>("User", userSchema);

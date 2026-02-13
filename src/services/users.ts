@@ -5,11 +5,19 @@ import Site from "../models/Site.js";
 import Utility from "../models/Utility.js";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import { sendSuccess, sendError } from "../utils/response-helper.js";
+import { parsePaginationParams, buildPaginationMeta } from "../utils/pagination.js";
 
 export async function getUsers(request: Request, response: Response) {
   console.log("Get users endpoint hit");
   try {
-    const users = await User.find({}, { password: 0 }).sort({createdAt: -1});
+    const { page, pageSize, skip } = parsePaginationParams(request);
+    const totalItems = await User.countDocuments();
+
+    const users = await User.find({}, { password: 0 })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize);
     
     const usersWithStats = await Promise.all(users.map(async (user) => {
         const businessCount = await Business.countDocuments({ "members.userId": user._id });
@@ -26,10 +34,12 @@ export async function getUsers(request: Request, response: Response) {
         };
     }));
 
-    response.status(200).send({message: 'Successful', users: usersWithStats});
+    const pagination = buildPaginationMeta(totalItems, page, pageSize);
+
+    sendSuccess(response, 200, "Successful", { users: usersWithStats, pagination });
   } catch (error) {
     console.error("Error fetching users:", error);
-    response.status(400).send({ message: "Error fetching users" });
+    sendError(response, 400, "Error fetching users");
   }
 }
 
@@ -79,8 +89,7 @@ export async function getUserById(request: Request, response: Response) {
   try {
     const user = await User.findById(request.params.id, { password: 0 }); // Exclude password from the response
     if (!user) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
 
     const businesses = await Business.find({ "members.userId": user._id });
@@ -88,16 +97,15 @@ export async function getUserById(request: Request, response: Response) {
     const siteIds = sites.map(s => s._id);
     const contracts = await Utility.find({ site: { $in: siteIds } }).populate('site');
 
-    response.status(200).send({
-        message: 'Successful', 
-        user,
-        businesses,
-        sites,
-        contracts
+    sendSuccess(response, 200, "Successful", {
+      user,
+      businesses,
+      sites,
+      contracts
     });
   } catch (error) {
     console.error("Error getting user:", error);
-    response.status(400).send({ message: "Failed to get user" });
+    sendError(response, 400, "Failed to get user");
   }
 }
 
@@ -108,14 +116,12 @@ export async function updateUser(request: Request, response: Response) {
       request.params.id
     )) as typeof User.prototype & { _id: any };
     if (!user) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
     let updatedData = request.body;
 
     if (updatedData.password) {
-      response.status(400).send({ message: "Cannot update password"})
-      return;
+      return sendError(response, 400, "Cannot update password");
     }
 
     if (request.body.expoPushToken) {
@@ -137,12 +143,11 @@ export async function updateUser(request: Request, response: Response) {
       }
     );
     if (!updatedUser) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
-    response.status(200).send({message: 'User successfully updated', updatedUser});
+    sendSuccess(response, 200, "User successfully updated", { user: updatedUser });
   } catch (error) {
-    response.status(400).send({ message: "Failed to update user" });
+    sendError(response, 400, "Failed to update user");
   }
 }
 
@@ -151,23 +156,21 @@ export async function changePassword(request: Request, response: Response) {
   try {
     const user = await User.findById(request.params.id);
     if (!user) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
     // console.log(user.password, request.body.oldPassword)
     const isValidPassword = await bcrypt.compare(request.body.oldPassword, user.password);
     if (!isValidPassword) {
-      response.status(400).send({ message: "Old password is incorrect" });
-      return;
+      return sendError(response, 400, "Old password is incorrect");
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(request.body.newPassword, salt);
     user.password = hashedPassword;
     await user.save();
-    response.status(200).send({ message: "Password changed successfully" });
+    sendSuccess(response, 200, "Password changed successfully");
   } catch (error) {
     console.log(error)
-    response.status(400).send({ message: "Failed to update password"})
+    sendError(response, 400, "Failed to update password");
   }
 }
 
@@ -176,12 +179,11 @@ export async function deleteUser(request: Request, response: Response) {
   try {
     const user = await User.findByIdAndDelete(request.params.id);
     if (!user) {
-      response.status(404).send({ message: "User not found" });
-      return;
+      return sendError(response, 404, "User not found");
     }
-    response.status(200).send({ message: "User deleted successfully" });
+    sendSuccess(response, 200, "User deleted successfully");
   } catch (error) {
-    response.status(400).send({ message: "Failed to delete user" });
+    sendError(response, 400, "Failed to delete user");
   }
 }
 

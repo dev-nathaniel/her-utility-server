@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import type { Request, Response } from "express";
 import Business from "../models/Business.js";
+import { sendSuccess, sendError } from "../utils/response-helper.js";
 
 /*
 Behavior:
@@ -114,18 +115,18 @@ export async function fetchSitesForUser(request: Request, response: Response) {
   try {
     const userId = String(request.user.userId).trim();
     if (!userId) {
-      return response.status(400).json({ message: "userId is required" });
+      return sendError(response, 400, "userId is required");
     }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return response.status(400).json({ message: "Invalid userId" });
+      return sendError(response, 400, "Invalid userId");
     }
 
     const sites = await getSitesForUserId(userId);
-    return response.status(200).json({ sites });
+    sendSuccess(response, 200, "Successful", { sites });
   } catch (err: any) {
     console.error("fetchSitesForUser error:", err);
-    return response.status(500).json({ message: "Failed to fetch sites" });
+    sendError(response, 500, "Failed to fetch sites");
   }
 }
 
@@ -166,24 +167,22 @@ export async function fetchSiteDetails(request: Request, response: Response) {
     const siteId = String(request.params.id).trim();
 
     if (!siteId) {
-      return response.status(400).json({ message: "siteId is required" });
+      return sendError(response, 400, "siteId is required");
     }
 
     if (!mongoose.Types.ObjectId.isValid(siteId)) {
-      return response.status(400).json({ message: "Invalid siteId" });
+      return sendError(response, 400, "Invalid siteId");
     }
 
     const site = await getSiteDetails(siteId);
     if (!site) {
-      return response.status(404).json({ message: "Site not found" });
+      return sendError(response, 404, "Site not found");
     }
 
-    return response.status(200).json({ site });
+    sendSuccess(response, 200, "Successful", { site });
   } catch (err: any) {
     console.error("fetchSiteDetails error:", err);
-    return response
-      .status(500)
-      .json({ message: "Failed to fetch site details" });
+    sendError(response, 500, "Failed to fetch site details");
   }
 }
 
@@ -232,18 +231,14 @@ export async function AddSite(request: Request, response: Response) {
       await session.abortTransaction();
       session.endSession();
       console.log("Valid businessId is required")
-      return response
-        .status(400)
-        .json({ message: "Valid businessId is required" });
+      return sendError(response, 400, "Valid businessId is required");
     }
 
     if (!name || !address) {
       await session.abortTransaction();
       session.endSession();
-      console.log("Name and Adress are required")
-      return response
-        .status(400)
-        .json({ message: "Name and Adress are required" });
+      console.log("Name and Address are required")
+      return sendError(response, 400, "Name and Address are required");
     }
 
     let memberIds: string[] = []
@@ -255,9 +250,7 @@ export async function AddSite(request: Request, response: Response) {
         await session.abortTransaction();
         session.endSession();
         console.log("members must be an array")
-        return response
-          .status(400)
-          .json({ message: "members must be an array" });
+        return sendError(response, 400, "members must be an array");
       }
 
       memberIds = Array.from(
@@ -270,9 +263,7 @@ export async function AddSite(request: Request, response: Response) {
         await session.abortTransaction();
         session.endSession();
         console.log("Invalid user id(s) provided")
-        return response
-          .status(400)
-          .json({ message: "Invalid user id(s) provided", invalidIds });
+        return sendError(response, 400, "Invalid user id(s) provided", { invalidIds });
       }
 
       const users = await User.find({ _id: { $in: memberIds } }).select("_id");
@@ -282,9 +273,7 @@ export async function AddSite(request: Request, response: Response) {
         await session.abortTransaction();
         session.endSession();
         console.log("Some users were not found.")
-        return response
-          .status(400)
-          .json({ message: "Some users were not found.", missing });
+        return sendError(response, 400, "Some users were not found.", { missing });
       }
     }
 
@@ -297,7 +286,7 @@ export async function AddSite(request: Request, response: Response) {
 
     if (!site) {
       console.log("Site creation failed")
-      return response.status(400).json({ message: "Site creation failed"})
+      return sendError(response, 400, "Site creation failed");
     }
 
     await Business.findByIdAndUpdate(businessId, {
@@ -313,11 +302,11 @@ export async function AddSite(request: Request, response: Response) {
     await session.commitTransaction();
     session.endSession();
 
-    return response.status(201).json({ message: "Site created", site });
+    sendSuccess(response, 201, "Site created", { site });
   } catch (error: any) {
     await session.abortTransaction();
     session.endSession();
     console.error("AddSite error:", error);
-    return response.status(500).json({ message: "Failed to create site" });
+    sendError(response, 500, "Failed to create site");
   }
 }
