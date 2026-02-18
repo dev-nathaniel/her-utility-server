@@ -13,6 +13,8 @@ export interface IUtility extends Document {
   billingFrequency?: string;
   paymentMethod?: string;
   notes?: string;
+  email?: string;
+  postcode?: string;
   status?: string;
   previousContractExpiry?: string;
   previousMeterId?: string;
@@ -31,6 +33,8 @@ const UtilitySchema: Schema = new Schema<IUtility>(
     billingFrequency: { type: String },
     paymentMethod: { type: String },
     notes: { type: String },
+    email: { type: String },
+    postcode: { type: String },
     status: { type: String, enum: ["active", "expired", "pending"]},
     previousContractExpiry: { type: String },
     previousMeterId: { type: String },

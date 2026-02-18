@@ -78,6 +78,8 @@ export async function login(request: Request, response: Response) {
     sendSuccess(response, 200, "Login successful", {
       user: {
         id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         fullname: user.fullname,
         email: user.email,
         role: user.role,
@@ -114,10 +116,10 @@ export async function isEmailExisting(request: Request, response: Response) {
 export async function register(request: Request, response: Response) {
   console.log("Register Endpoint Hit");
   try {
-    const { fullname, email, password, role } = request.body;
+    const { firstName, lastName, email, password, role } = request.body;
     console.log("Request body:", request.body);
-    if (!fullname || !email || !password) {
-      return sendError(response, 400, "Fullname, email, and password are required");
+    if (!firstName || !lastName || !email || !password) {
+      return sendError(response, 400, "First name, Last name, email, and password are required");
     }
     // Check if user already exists by email or username
     const existingUser = await User.findOne({ email });
@@ -135,7 +137,8 @@ export async function register(request: Request, response: Response) {
     // }
 
     const user = new User({
-      fullname,
+      firstName,
+      lastName,
       email,
       password: hashedPassword,
       role,
@@ -156,6 +159,8 @@ export async function register(request: Request, response: Response) {
     sendSuccess(response, 201, "User created successfully", {
       user: {
         id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         fullname: user.fullname,
         email: user.email,
         role: user.role,

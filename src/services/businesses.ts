@@ -113,7 +113,7 @@ export async function getBusinessesForUserId(userId: string) {
     .populate({
       path: "members.userId",
       model: "User",
-      select: "_id fullname email",
+      select: "_id firstName lastName email",
     })
     .lean()
     .exec();
@@ -151,7 +151,7 @@ export async function fetchBusiness(request: Request, response: Response) {
     .populate({
       path: "members.userId",
       model: "User",
-      select: "_id fullname email",
+      select: "_id firstName lastName email",
   })
     .populate("invites")
     if (!business) {
@@ -196,7 +196,7 @@ export async function fetchBusinessMember(request:Request, response: Response) {
 
     // 2. Fetch user with only needed fields
     const user = await User.findById(userId)
-      .select("fullname email sites") // only return what you need
+      .select("firstName lastName email sites") // only return what you need
       .lean();
 
     if (!user) {
@@ -205,7 +205,9 @@ export async function fetchBusinessMember(request:Request, response: Response) {
 
     // 3. Attach the role (from business.members)
     const result = {
-      fullname: user.fullname,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      // fullname: `${user.firstName} ${user.lastName}`,
       email: user.email,
       sites: user.sites ?? [],
       role: memberRecord.role, // owner | manager | viewer

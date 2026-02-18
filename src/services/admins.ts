@@ -40,7 +40,7 @@ export const getPendingAdmins = async (req: Request, res: Response) => {
 // Create a new admin
 export const createAdmin = async (req: Request, res: Response) => {
   try {
-    const { email, password, fullname, phoneNumber } = req.body;
+    const { email, password, firstName, lastName, phoneNumber } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -53,7 +53,8 @@ export const createAdmin = async (req: Request, res: Response) => {
     const newAdmin = await User.create({
       email,
       password: hashedPassword,
-      fullname,
+      firstName,
+      lastName,
       phoneNumber,
       role: "admin",
       status: "pending", // Or "Pending" if approval needed

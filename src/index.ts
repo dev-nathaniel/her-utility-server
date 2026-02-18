@@ -11,6 +11,8 @@ import routes from "./controllers/index.js";
 
 //rate limiting
 //password trial limit
+//inactive shouldn't be able to login
+//delete user
 
 dotenv.config();
 

@@ -99,7 +99,7 @@ export async function getSitesForUserId(userId: string) {
     .populate({
       path: "members.userId",
       model: "User",
-      select: "_id fullname email",
+      select: "_id firstName lastName email",
     })
     .lean()
     .exec();
@@ -145,7 +145,7 @@ export async function getSiteDetails(siteId: string) {
     .populate({
       path: "members.userId",
       model: "User",
-      select: "_id fullname email",
+      select: "_id firstName lastName email",
     })
     .populate("utilities")
     .lean()

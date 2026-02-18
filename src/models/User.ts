@@ -2,7 +2,9 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
-  fullname: string;
+  firstName: string;
+  lastName: string;
+  readonly fullname: string;
   email: string;
   phoneNumber?: string;
   password: string;
@@ -18,7 +20,9 @@ export interface IUser extends Document {
 }
 
 const userSchema: Schema = new Schema({
-  fullname: { type: String, required: true, unique: true },
+  firstName: { type: String, required: true, trim: true },
+  lastName: { type: String, required: true, trim: true },
+  // fullname: { type: String, required: true, unique: true },
   email: { type: String, unique: true, required: true, lowercase: true, trim: true },
   phoneNumber: { type: String },
   password: { type: String, required: true },
@@ -31,7 +35,16 @@ const userSchema: Schema = new Schema({
   sites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Site' }],
   refreshTokens: [{ type: mongoose.Schema.Types.ObjectId, ref: 'RefreshToken' }],
   pushNotificationsEnabled: { type: Boolean, default: true }
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual for fullname
+userSchema.virtual('fullname').get(function() {
+  return `${this.firstName} ${this.lastName}`;
+});
 
 const User = mongoose.model<IUser>("User", userSchema);
 
