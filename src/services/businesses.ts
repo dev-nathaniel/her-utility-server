@@ -12,9 +12,9 @@ export const createBusiness = async (request: Request, response: Response) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { name, address, members } = request.body;
-    if (!members || !name || !address) {
-      return sendError(response, 400, "Missing required fields.");
+    const { name, postcode, address, members } = request.body;
+    if (!members || !name || (!address && !postcode)) {
+      return sendError(response, 400, "Business name and either address or postcode are required.");
     }
     if (!Array.isArray(members) || members.length === 0) {
       return sendError(response, 400, "members must be a non-empty array of user ids and role");
@@ -43,6 +43,7 @@ export const createBusiness = async (request: Request, response: Response) => {
       [
         {
           name,
+          postcode,
           address,
           members,
         },
