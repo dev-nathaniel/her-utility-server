@@ -165,8 +165,7 @@ export async function changePassword(request: Request, response: Response) {
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(request.body.newPassword, salt);
-    user.password = hashedPassword;
-    await user.save();
+    await User.updateOne({ _id: user._id }, { password: hashedPassword });
     sendSuccess(response, 200, "Password changed successfully");
   } catch (error) {
     console.log(error)

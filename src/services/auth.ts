@@ -71,9 +71,7 @@ export async function login(request: Request, response: Response) {
       isValid: true
     })) as IRefreshToken & { _id: any }
 
-    user.refreshTokens = user.refreshTokens.concat(refreshTokenDoc._id as any)
-
-    await user.save()
+    await User.updateOne({ _id: user._id }, { $push: { refreshTokens: refreshTokenDoc._id } });
 
     sendSuccess(response, 200, "Login successful", {
       user: {
@@ -213,9 +211,7 @@ export async function guestLogin(request: Request, response: Response) {
           isValid: true
         })
 
-        guestUser.refreshTokens = guestUser.refreshTokens.concat(refreshTokenDoc._id)
-
-        await guestUser.save()
+        await User.updateOne({ _id: guestUser._id }, { $push: { refreshTokens: refreshTokenDoc._id } });
         sendSuccess(response, 200, "Guest login successful", {
           user: {
             id: guestUser._id,
@@ -264,6 +260,8 @@ export async function guestLogin(request: Request, response: Response) {
       password: hashedPassword,
       email: guestEmail,
       role: guestRole,
+      firstName: "Guest",
+      lastName: "User",
     }) as typeof User.prototype & { _id: any };
     // If there is a file, try to upload it
     // if (request.file && request.file.buffer) {
@@ -289,8 +287,7 @@ export async function guestLogin(request: Request, response: Response) {
       isValid: true
     })
 
-    guestUser.refreshTokens = guestUser.refreshTokens.concat(refreshTokenDoc._id)
-    await guestUser.save()
+    await User.updateOne({ _id: guestUser._id }, { $push: { refreshTokens: refreshTokenDoc._id } });
 
     sendSuccess(response, 201, "Guest user created successfully", {
       user: {
@@ -435,13 +432,13 @@ export async function resetPassword(request: Request, response: Response) {
       return sendError(response, 400, "Email and new password are required");
     }
     const user = await User.findOne({ email });
+
     if (!user) {
       return sendError(response, 404, "User not found");
     }
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
-    user.password = hashedPassword;
-    await user.save();
+    await User.updateOne({ _id: user._id }, { password: hashedPassword });
     sendSuccess(response, 200, "Password reset successfully");
   } catch (error) {
     sendError(response, 400, "Failed to reset password");
@@ -589,11 +586,8 @@ export async function registerPushToken(request: Request, response: Response) {
     }
 
     // Add token if it doesn't exist
-    if (!user.expoPushTokens?.includes(token)) {
-      user.expoPushTokens = [...(user.expoPushTokens || []), token];
-      await user.save();
-      console.log(`Token ${token} registered for user ${user._id}`);
-    }
+    await User.updateOne({ _id: user._id }, { $addToSet: { expoPushTokens: token } });
+    console.log(`Token ${token} registered for user ${user._id}`);
 
     sendSuccess(response, 200, "Push token registered successfully");
   } catch (error) {
@@ -618,13 +612,8 @@ export async function unregisterPushToken(request: Request, response: Response) 
     }
 
     // Remove token
-    const initialCount = user.expoPushTokens?.length || 0;
-    user.expoPushTokens = (user.expoPushTokens || []).filter(t => t !== token);
-
-    if (user.expoPushTokens.length !== initialCount) {
-      await user.save();
-      console.log(`Token ${token} unregistered for user ${user._id}`);
-    }
+    await User.updateOne({ _id: user._id }, { $pull: { expoPushTokens: token } });
+    console.log(`Token ${token} unregistered for user ${user._id}`);
 
     sendSuccess(response, 200, "Push token unregistered successfully");
   } catch (error) {
