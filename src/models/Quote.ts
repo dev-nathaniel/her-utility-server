@@ -25,7 +25,7 @@ const QuoteSchema: Schema = new Schema<IQuote>(
     site: { type: Schema.Types.ObjectId, ref: "Site", required: true},
     requester: { type: Schema.Types.ObjectId, ref: "User", required: true },
     recipients: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    utilityType: { type: String, enum: ["electricity", "water", "gas"], required: true },
+    utilityType: { type: String, enum: ["electricity", "water", "gas", "telecoms"], required: true },
     questionnaire: { type: Schema.Types.Mixed, required: true }, // store answers: current supplier, contract expiry, postcode, identifiers...
     suggestedPrice: { type: Number },
     currency: { type: String, default: "GBP" },
