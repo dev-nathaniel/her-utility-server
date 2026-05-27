@@ -5,8 +5,8 @@ import { getUtilities, getUtility, createUtility } from "../services/utilities.j
 const router = Router();
 
 router.post("/", verifyToken, createUtility);
-router.get("/", getUtilities);
-router.get("/:id", getUtility); 
+router.get("/", verifyToken, getUtilities);
+router.get("/:id", verifyToken, getUtility); 
 // router.put("/:id", );
 // router.delete("/:id", );
 

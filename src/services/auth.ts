@@ -119,6 +119,12 @@ export async function register(request: Request, response: Response) {
     if (!firstName || !lastName || !email || !password) {
       return sendError(response, 400, "First name, Last name, email, and password are required");
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return sendError(response, 400, "Please provide a valid email address");
+    }
+
     // Check if user already exists by email or username
     const existingUser = await User.findOne({ email });
     if (existingUser) {
